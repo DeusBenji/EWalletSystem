@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="docker-compose.yml" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Frontend/" />
+  <Folder Name="/src/Gateway/" />
+  <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/BachMitID/">
+    <Project Path="src/Services/BachMitID/BachMitID.Application/BachMitID.Application.csproj" />
+    <Project Path="src/Services/BachMitID/BachMitID.Domain/BachMitID.Domain.csproj" />
+    <Project Path="src/Services/BachMitID/BachMitID.Infrastructure/BachMitID.Infrastructure.csproj" />
+    <Project Path="src/Services/BachMitID/BachMitID/BachMitID.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BachMitID.Tests/BachMitID.Tests.csproj" />
+  </Folder>
+</Solution>
