@@ -8,7 +8,6 @@ namespace BachMitID.Application.Contracts
 {
     public class AccountCreatedEvent
     {
-
         public int Id { get; set; }
         public string Email { get; set; } = string.Empty;
 
