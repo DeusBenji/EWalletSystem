@@ -1,0 +1,67 @@
+application/json
+=======
+### Fabric Resolver – Health check
+GET http://localhost:8080/health
+Accept: application/json
+
+###
+
+### Create anchor
+POST http://localhost:8080/anchors
+Content-Type: application/json
+Accept: application/json
+
+{
+  "hash": "abc123",
+  "issuerDid": "did:example:issuer1",
+  "metadata": "test anchor for bachelor demo"
+}
+
+###
+
+### Get anchor by hash
+GET http://localhost:8080/anchors/abc123
+Accept: application/json
+
+###
+
+### Verify anchor exists
+GET http://localhost:8080/anchors/abc123/verify
+Accept: application/json
+
+###
+
+### Verify non-existing anchor (should return exists = false)
+GET http://localhost:8080/anchors/does-not-exist/verify
+Accept: application/json
+
+###
+
+### Create DID
+POST http://localhost:8080/dids
+Content-Type: application/json
+Accept: application/json
+
+{
+  "did": "did:example:123",
+  "controller": "did:example:controller1",
+  "verificationMethod": [
+    {
+      "type": "Ed25519VerificationKey2018",
+      "publicKeyBase58": "DummyBase58Key-For-Bachelor-Demo"
+    }
+  ]
+}
+
+###
+
+### Resolve DID
+GET http://localhost:8080/dids/did:example:123
+Accept: application/json
+
+###
+
+### Resolve unknown DID (should give 404 med fejl-body)
+GET http://localhost:8080/dids/did:example:does-not-exist
+Accept: application/json
+
