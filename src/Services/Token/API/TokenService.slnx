@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="../../Shared/Shared/Shared.csproj" />
+  <Project Path="../Application/Application.csproj" />
+  <Project Path="../Domain/Domain.csproj" />
+  <Project Path="../Infrastructure/Infrastructure.csproj" />
+  <Project Path="../TokenSerrvice.Test/TokenSerrviceTest.csproj" />
+  <Project Path="Api.csproj" />
+</Solution>

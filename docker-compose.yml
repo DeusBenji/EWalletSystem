@@ -1,48 +1,80 @@
-﻿version: '3.8'
+version: "3.9"
 
 services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
+  fabric-resolver:
+    build:
+      context: ./src/Services/GoServices/fabric-resolver
+      dockerfile: Dockerfile
+    container_name: fabric-resolver
     ports:
-      - "2181:2181"
+      - "7000:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka
+  account-service:
+    build:
+      context: .
+      dockerfile: src/Services/Account/API/Dockerfile
+    container_name: account-service
+    ports:
+      - "7001:8080"
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=AccountDb;User Id=sa;Password=YourStrong!Password;TrustServerCertificate=True;"
+      Kafka__BootstrapServers: "kafka:9092"
     depends_on:
-      - zookeeper
+      - fabric-resolver
+
+  validation-service:
+    build:
+      context: .
+      dockerfile: src/Services/Validation/API/Dockerfile
+    container_name: validation-service
     ports:
-      - "9092:9092"
-      - "29092:29092"
+      - "7002:8080"
+    restart: unless-stopped
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      ASPNETCORE_URLS: "http://+:8080"
+      Kafka__BootstrapServers: "kafka:9092"
+      ConnectionStrings__Redis: "redis:6379"
 
-      KAFKA_LISTENERS: PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT_DOCKER://0.0.0.0:29092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT_DOCKER://kafka:29092
-
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_DOCKER:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_DOCKER
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-
-  kafdrop:
-    image: obsidiandynamics/kafdrop
-    container_name: kafdrop
+  token-service:
+    build:
+      context: .
+      dockerfile: src/Services/Token/API/Dockerfile
+    container_name: token-service
     ports:
-      - "9000:9000"
+      - "7003:8080"
+    restart: unless-stopped
     environment:
-      KAFKA_BROKERCONNECT: "kafka:29092"
+      ASPNETCORE_URLS: "http://+:8080"
+      Kafka__BootstrapServers: "kafka:9092"
+      ConnectionStrings__Redis: "redis:6379"
     depends_on:
-      - kafka
+      - validation-service
+      - account-service
 
-  redis:
-    image: redis:7-alpine
-    container_name: redis
+  bachmitid-api:
+    build:
+      context: .
+      dockerfile: src/Services/BachMitID/BachMitID/Dockerfile
+    container_name: bachmitid-api
     ports:
-      - "6379:6379"
-    command: ["redis-server", "--appendonly", "yes"]
+      - "7004:8080"
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: "http://+:8080"
+      Kafka__BootstrapServers: "kafka:9092"
+    depends_on:
+      - account-service
+      - token-service
+
+networks:
+  default:
+    name: bachelor-net
