@@ -5,7 +5,7 @@ COPY ["src/Services/Validation/API/Api.csproj", "src/Services/Validation/API/"]
 COPY ["src/Services/Validation/Application/Application.csproj", "src/Services/Validation/Application/"]
 COPY ["src/Services/Validation/Domain/Domain.csproj", "src/Services/Validation/Domain/"]
 COPY ["src/Services/Validation/Infrastructure/Infrastructure.csproj", "src/Services/Validation/Infrastructure/"]
-COPY ["src/Shared/Shared/Shared/Shared.csproj", "src/Shared/Shared/Shared/"]
+COPY ["src/BuildingBlocks/BuildingBlocks.csproj", "src/BuildingBlocks/"]
 
 RUN dotnet restore "src/Services/Validation/API/Api.csproj"
 

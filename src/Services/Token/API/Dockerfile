@@ -5,7 +5,7 @@ COPY ["src/Services/Token/API/Api.csproj", "src/Services/Token/API/"]
 COPY ["src/Services/Token/Application/Application.csproj", "src/Services/Token/Application/"]
 COPY ["src/Services/Token/Domain/Domain.csproj", "src/Services/Token/Domain/"]
 COPY ["src/Services/Token/Infrastructure/Infrastructure.csproj", "src/Services/Token/Infrastructure/"]
-COPY ["src/Shared/Shared/Shared/Shared.csproj", "src/Shared/Shared/Shared/"]
+COPY ["src/BuildingBlocks/BuildingBlocks.csproj", "src/BuildingBlocks/"]
 
 RUN dotnet restore "src/Services/Token/API/Api.csproj"
 

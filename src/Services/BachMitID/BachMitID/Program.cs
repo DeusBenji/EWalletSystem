@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
@@ -49,7 +50,12 @@ var jwtIssuer = jwtSection["Issuer"];
 var jwtAudience = jwtSection["Audience"];
 var jwtKey = jwtSection["Key"];
 
-builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    throw new InvalidOperationException("Jwt:Key is missing in configuration.");
+}
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     ConnectionMultiplexer.Connect(redisConn));
 
 builder.Services.AddScoped<IAccDbAccess, AccountDatabaseAccess>();
@@ -74,7 +80,7 @@ builder.Services.AddSingleton<IMapper>(sp =>
 builder.Services
     .AddAuthentication(options =>
     {
-        // Stadig standard til web-login via MitID
+        // Standard til web-login via MitID (cookies + OIDC)
         options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
     })
@@ -99,20 +105,48 @@ builder.Services
         options.GetClaimsFromUserInfoEndpoint = true;
         options.RequireHttpsMetadata = true;
     })
-    // 🔽 Her kommer JWT Bearer til interne kald fra ApiGateway
-    .AddJwtBearer(options =>
+    // 🔽 JWT Bearer til interne kald fra ApiGateway
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
     {
+        // Midlertidigt: kun tjek signaturen, IKKE issuer/audience/lifetime
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
             ValidateIssuerSigningKey = true,
-            ValidateLifetime = true,
-
-            ValidIssuer = jwtIssuer,
-            ValidAudience = jwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtKey!))
+                Encoding.UTF8.GetBytes(jwtKey!)),
+
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = false
+        };
+
+        // 🧾 LOG: Se om headeren overhovedet kommer ind
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var authHeader = context.Request.Headers["Authorization"].ToString();
+                Console.WriteLine($"[BachMitID][JWT] Authorization header: {authHeader}");
+                return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = context =>
+            {
+                Console.WriteLine($"[BachMitID][JWT] Authentication failed: {context.Exception.Message}");
+                return Task.CompletedTask;
+            },
+            // 🚫 Forhindrer redirect til OIDC på API-kald og returnerer ren 401 JSON
+            OnChallenge = context =>
+            {
+                context.HandleResponse(); // undertryk default redirect-logic
+                if (!context.Response.HasStarted)
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    context.Response.ContentType = "application/json";
+                    return context.Response.WriteAsync("{\"error\":\"Unauthorized - invalid or missing token\"}");
+                }
+
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -131,7 +165,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+// ❌ app.UseHttpsRedirection();  // fjernet: gateway snakker HTTP til os
 
 app.UseAuthentication();
 app.UseAuthorization();
