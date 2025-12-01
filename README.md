@@ -43,3 +43,6 @@ docker-compose down
 
 
 For visuelt brug - http://localhost:9000/
+
+Eksempel på Gateway kald til MitID konti:
+https://localhost:7005/mitid/api/MitIdAccounts
