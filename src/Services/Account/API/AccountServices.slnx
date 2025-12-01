@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="../../Shared/Shared/Shared.csproj" />
+  <Project Path="../AccountSerrvice.Test/AccountSerrvice.Test.csproj" Id="b64ca36c-71f7-427e-a4c8-2cd541ef5667" />
+  <Project Path="../Application/Application.csproj" />
+  <Project Path="../Domain/Domain.csproj" />
+  <Project Path="../Infrastrructure/Infrastructure.csproj" />
+  <Project Path="AccountService.API.csproj" />
+</Solution>
