@@ -45,4 +45,9 @@ docker-compose down
 For visuelt brug - http://localhost:9000/
 
 Eksempel på Gateway kald til MitID konti:
-https://localhost:7005/mitid/api/MitIdAccounts
+http://localhost:5037/mitid/api/MitIdAccounts
+Når du kalder gateway’en i Visual Studio → brug fx
+http://localhost:5037/mitid/api/MitIdAccounts
+
+Når du kalder gateway’en i Docker → brug
+http://localhost:7005/mitid/api/MitIdAccounts

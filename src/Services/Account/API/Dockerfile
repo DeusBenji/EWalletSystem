@@ -5,7 +5,7 @@ COPY ["src/Services/Account/API/AccountService.API.csproj", "src/Services/Accoun
 COPY ["src/Services/Account/Application/Application.csproj", "src/Services/Account/Application/"]
 COPY ["src/Services/Account/Domain/Domain.csproj", "src/Services/Account/Domain/"]
 COPY ["src/Services/Account/Infrastructure/Infrastructure.csproj", "src/Services/Account/Infrastructure/"]
-COPY ["src/Shared/Shared/Shared/Shared.csproj", "src/Shared/Shared/Shared/"]
+COPY ["src/BuildingBlocks/BuildingBlocks.csproj", "src/BuildingBlocks/"]
 
 RUN dotnet restore "src/Services/Account/API/AccountService.API.csproj"
 

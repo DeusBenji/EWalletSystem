@@ -1,13 +1,22 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>3fa93758-1388-4c58-9803-cc209b03cacb</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Reverse proxy -->
     <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
+
+    <!-- JWT + tokens (nye 8.x versioner, ikke deprecated 7.x) -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.15.0" />
+
+    <!-- Options + config binding -->
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
   </ItemGroup>
 
 </Project>

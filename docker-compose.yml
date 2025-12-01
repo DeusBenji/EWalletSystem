@@ -1,6 +1,61 @@
-version: "3.9"
+﻿version: "3.9"
 
 services:
+  # =========================
+  # Infra: Zookeeper + Kafka
+  # =========================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      KAFKA_LISTENERS: PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT_DOCKER://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT_DOCKER://kafka:29092
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_DOCKER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_DOCKER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    container_name: kafdrop
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka:29092"
+    depends_on:
+      - kafka
+
+  # ==============
+  # Infra: Redis
+  # ==============
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+
+  # =====================
+  # Go fabric resolver
+  # =====================
   fabric-resolver:
     build:
       context: ./src/Services/GoServices/fabric-resolver
@@ -16,6 +71,9 @@ services:
       retries: 3
       start_period: 5s
 
+  # =====================
+  # Account service
+  # =====================
   account-service:
     build:
       context: .
@@ -30,7 +88,11 @@ services:
       Kafka__BootstrapServers: "kafka:9092"
     depends_on:
       - fabric-resolver
+      - kafka
 
+  # =====================
+  # Validation service
+  # =====================
   validation-service:
     build:
       context: .
@@ -43,7 +105,13 @@ services:
       ASPNETCORE_URLS: "http://+:8080"
       Kafka__BootstrapServers: "kafka:9092"
       ConnectionStrings__Redis: "redis:6379"
+    depends_on:
+      - kafka
+      - redis
 
+  # =====================
+  # Token service
+  # =====================
   token-service:
     build:
       context: .
@@ -59,7 +127,12 @@ services:
     depends_on:
       - validation-service
       - account-service
+      - kafka
+      - redis
 
+  # =====================
+  # BachMitID API
+  # =====================
   bachmitid-api:
     build:
       context: .
@@ -70,10 +143,46 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_URLS: "http://+:8080"
+
+      # Kafka should use docker broker
       Kafka__BootstrapServers: "kafka:9092"
+
+      # Redis
+      ConnectionStrings__RedisConnection: "redis:6379"
+
+      # ⭐ JWT settings – MUST MATCH ApiGateway 100%
+      Jwt__Issuer: "ApiGateway"
+      Jwt__Audience: "BachMitID"
+      Jwt__Key: "DEV_SUPER_SECRET_KEY_1234567890_ABCD"
     depends_on:
       - account-service
       - token-service
+      - kafka
+      - redis
+
+  # =====================
+  # API Gateway (YARP)
+  # =====================
+  apigateway:
+    build:
+      context: .
+      dockerfile: src/Gateway/ApiGateway/Dockerfile
+    container_name: apigateway
+    ports:
+      - "7005:8080"   # <- Gateway exposed here
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: "http://+:8080"
+
+      # ⭐ JWT settings (must match BachMitID exactly)
+      Jwt__Issuer: "ApiGateway"
+      Jwt__Audience: "BachMitID"
+      Jwt__Key: "DEV_SUPER_SECRET_KEY_1234567890_ABCD"
+
+      # ⭐ Override YARP so gateway hits the Docker container, NOT localhost
+      ReverseProxy__Clusters__mitid-cluster__Destinations__mitid-api__Address: "http://bachmitid-api:8080/"
+    depends_on:
+      - bachmitid-api
 
 networks:
   default:
