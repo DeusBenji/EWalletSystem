@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Shared.Contracts.Events
+namespace BuildingBlocks.Contracts.Events
 {
     public record AccountCreated(
         Guid AccountId,

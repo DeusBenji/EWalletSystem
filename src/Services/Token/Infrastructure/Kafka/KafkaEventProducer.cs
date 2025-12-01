@@ -1,13 +1,13 @@
 ﻿using Application.Interfaces;
-using Shared.Infrastructure.Kafka;
+using BuildingBlocks.Contracts.Messaging;
 
 namespace Infrastructure.Kafka
 {
     public class KafkaEventProducer : IKafkaEventProducer
     {
-        private readonly Shared.Infrastructure.Kafka.IKafkaProducer _producer;
+        private readonly BuildingBlocks.Contracts.Messaging.IKafkaProducer _producer;
 
-        public KafkaEventProducer(Shared.Infrastructure.Kafka.IKafkaProducer producer)
+        public KafkaEventProducer(BuildingBlocks.Contracts.Messaging.IKafkaProducer producer)
         {
             _producer = producer;
         }

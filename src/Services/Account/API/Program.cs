@@ -49,8 +49,9 @@ builder.Services.AddAutoMapper(cfg =>
 });
 // Cross-cutting services
 builder.Services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
-builder.Services.AddSingleton<Shared.Infrastructure.Kafka.IKafkaProducer, Shared.Infrastructure.Kafka.KafkaProducer>();
+builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaProducer, BuildingBlocks.Kafka.KafkaProducer>();
 builder.Services.AddSingleton<IKafkaProducer, AccountCreatedProducer>();
+builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaConsumer, BuildingBlocks.Kafka.KafkaConsumer>();
 
 // Redis connection
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
@@ -65,18 +66,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 builder.Services.AddSingleton<IAccountCache, AccountCache>();
 
 // Kafka consumer til MitIdVerified (BackgroundService)
-builder.Services.AddSingleton<IConsumer<Ignore, string>>(sp =>
-{
-    var config = new ConsumerConfig
-    {
-        BootstrapServers = builder.Configuration["Kafka:BootstrapServers"],
-        GroupId = "accountservice-mitid-consumer",
-        AutoOffsetReset = AutoOffsetReset.Earliest,
-        EnableAutoCommit = true
-    };
 
-    return new ConsumerBuilder<Ignore, string>(config).Build();
-});
 
 builder.Services.AddHostedService<MitIdVerifiedConsumer>();
 

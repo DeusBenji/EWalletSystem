@@ -1,8 +1,8 @@
 ﻿using Application.DTOs;
 using Application.Interfaces;
 using AutoMapper;
-using Shared.Contracts.Events;
-using Shared.Contracts.Messaging; // antag Topics.TokenIssued
+using BuildingBlocks.Contracts.Events;
+using BuildingBlocks.Contracts.Messaging; // antag Topics.TokenIssued
 using Domain.Models;
 using Domain.Repositories;
 using TokenService.Application.Interfaces;

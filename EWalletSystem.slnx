@@ -3,12 +3,12 @@
     <File Path="docker-compose.yml" />
     <File Path="README.md" />
   </Folder>
-  <Folder Name="/src/" />
-  <Folder Name="/src/Frontend/" />
+
+
   <Folder Name="/src/Gateway/">
     <Project Path="src/Gateway/ApiGateway/ApiGateway.csproj" />
   </Folder>
-  <Folder Name="/src/Services/" />
+
   <Folder Name="/src/Services/Account/">
     <Project Path="src/Services/Account/Application/Application.csproj" />
     <Project Path="src/Services/Account/Domain/Domain.csproj" />
@@ -39,9 +39,9 @@
   <Folder Name="/src/Services/Validation/API/">
     <Project Path="src/Services/Validation/API/Api.csproj" />
   </Folder>
-  <Folder Name="/src/Shared/" />
-  <Folder Name="/src/Shared/Shared/">
-    <Project Path="src/Shared/Shared/Shared/Shared.csproj" />
+
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/BuildingBlocks.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BachMitID.Tests/BachMitID.Tests.csproj" />

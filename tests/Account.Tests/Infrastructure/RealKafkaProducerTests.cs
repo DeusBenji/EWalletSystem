@@ -1,12 +1,12 @@
 ﻿using Confluent.Kafka;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
-using DotNet.Testcontainers.Configurations;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Text.Json;
 using Xunit;
+using BuildingBlocks.Kafka;
 using Infrastructure.Kafka;
 
 public class RealKafkaProducerTests : IAsyncLifetime
@@ -17,8 +17,6 @@ public class RealKafkaProducerTests : IAsyncLifetime
 
     public RealKafkaProducerTests()
     {
-        // Bemærk brug af Wait.ForUnixContainer().UntilContainerIsHealthy()
-        // i stedet for UntilPortIsAvailable()
         _rp = new ContainerBuilder()
             .WithImage("redpandadata/redpanda:latest")
             .WithPortBinding(HostKafkaPort, 9092)
@@ -33,7 +31,6 @@ public class RealKafkaProducerTests : IAsyncLifetime
                 "--kafka-addr", "0.0.0.0:9092",
                 "--advertise-kafka-addr", $"127.0.0.1:{HostKafkaPort}"
             )
-            // Redpanda logger "Successfully started Redpanda!" når den er klar
             .WithWaitStrategy(Wait
                 .ForUnixContainer()
                 .UntilMessageIsLogged("Successfully started Redpanda!"))
@@ -55,10 +52,10 @@ public class RealKafkaProducerTests : IAsyncLifetime
         var settings = new Dictionary<string, string> { ["Kafka:BootstrapServers"] = _bootstrap };
         var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
 
-        var kafkaProducer = new Shared.Infrastructure.Kafka.KafkaProducer(
-            config, new NullLogger<Shared.Infrastructure.Kafka.KafkaProducer>());
+        var kafkaProducer = new KafkaProducer(
+            config, new NullLogger<KafkaProducer>());
 
-        var producer = new Infrastructure.Kafka.AccountCreatedProducer(kafkaProducer);
+        var producer = new AccountCreatedProducer(kafkaProducer);
 
         var topic = "test-topic";
         var message = new { Id = Guid.NewGuid(), Email = "user@test.dk" };

@@ -31,7 +31,7 @@
     <ProjectReference Include="..\..\src\Services\Validation\Domain\Domain.csproj" />
     <ProjectReference Include="..\..\src\Services\Validation\Infrastructure\Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Services\Validation\API\Api.csproj" />
-    <ProjectReference Include="..\..\src\Shared\Shared\Shared\Shared.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\BuildingBlocks.csproj" />
   </ItemGroup>
 
   <ItemGroup>

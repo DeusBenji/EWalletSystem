@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using Moq;
-using Shared.Contracts.Events;
-using Shared.Contracts.Messaging;
+using BuildingBlocks.Contracts.Events;
+using BuildingBlocks.Contracts.Messaging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;

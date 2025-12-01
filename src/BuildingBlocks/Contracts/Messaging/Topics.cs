@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Shared.Contracts.Messaging
+namespace BuildingBlocks.Contracts.Messaging
 {
     public static class Topics
     {

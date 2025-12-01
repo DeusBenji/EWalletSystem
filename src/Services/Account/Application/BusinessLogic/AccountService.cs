@@ -5,8 +5,8 @@ using Domain.Repositories;
 using Microsoft.Extensions.Logging;
 using Application.DTOs;
 using Application.Interfaces;
-using Shared.Contracts.Messaging;
-using Shared.Contracts.Events;
+using BuildingBlocks.Contracts.Messaging;
+using BuildingBlocks.Contracts.Events;
 
 namespace Application.BusinessLogic
 {
@@ -14,7 +14,7 @@ namespace Application.BusinessLogic
 	{
 		private readonly IAccountRepository _repo;
 		private readonly IPasswordHasher _hasher;
-		private readonly IKafkaProducer _kafka;
+		private readonly Application.Interfaces.IKafkaProducer _kafka;
 		private readonly IAccountCache _cache;
 		private readonly IMapper _mapper;
 		private readonly ILogger<AccountService> _logger;
@@ -24,7 +24,7 @@ namespace Application.BusinessLogic
 		public AccountService(
 			IAccountRepository repo,
 			IPasswordHasher hasher,
-			IKafkaProducer kafka,
+			Application.Interfaces.IKafkaProducer kafka,
 			IAccountCache cache,
 			IMapper mapper,
 			ILogger<AccountService> logger)

@@ -1,13 +1,13 @@
-﻿using Application.Interfaces;
-using Shared.Infrastructure.Kafka;
+using Application.Interfaces;
+using BuildingBlocks.Contracts.Messaging;
 
 namespace Infrastructure.Kafka
 {
     public sealed class AccountCreatedProducer : Application.Interfaces.IKafkaProducer
     {
-        private readonly Shared.Infrastructure.Kafka.IKafkaProducer _producer;
+        private readonly BuildingBlocks.Contracts.Messaging.IKafkaProducer _producer;
 
-        public AccountCreatedProducer(Shared.Infrastructure.Kafka.IKafkaProducer producer)
+        public AccountCreatedProducer(BuildingBlocks.Contracts.Messaging.IKafkaProducer producer)
         {
             _producer = producer;
         }

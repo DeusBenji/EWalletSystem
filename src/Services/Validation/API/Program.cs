@@ -88,7 +88,7 @@ builder.Services.AddHttpClient<IFabricLookupClient, FabricLookupClient>((service
 // -------------------------------------------------------
 // Infrastructure – Kafka producer
 // -------------------------------------------------------
-builder.Services.AddSingleton<Shared.Infrastructure.Kafka.IKafkaProducer, Shared.Infrastructure.Kafka.KafkaProducer>();
+builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaProducer, BuildingBlocks.Kafka.KafkaProducer>();
 builder.Services.AddSingleton<IKafkaEventProducer, KafkaEventProducer>();
 
 // -------------------------------------------------------

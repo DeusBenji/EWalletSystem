@@ -4,13 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-
-namespace Shared.Contracts.Events
+namespace BuildingBlocks.Contracts.Events
 {
-    public record MitIdVerified(
+    public record CredentialVerified(
         Guid AccountId,
-        string MitIdSubId,
-        bool IsAdult,
+        bool IsValid,
+        string? IssuerDid,
+        string? FailureReason,
         DateTime VerifiedAt
-);
+    );
 }

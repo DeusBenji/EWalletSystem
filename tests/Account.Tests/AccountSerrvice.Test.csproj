@@ -28,7 +28,7 @@
     <ProjectReference Include="..\..\src\Services\Account\Application\Application.csproj" />
     <ProjectReference Include="..\..\src\Services\Account\Domain\Domain.csproj" />
     <ProjectReference Include="..\..\src\Services\Account\Infrastructure\Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Shared\Shared\Shared\Shared.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\BuildingBlocks.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -75,8 +75,9 @@ builder.Services.AddSingleton<IVcSigningService, VcSigningService>();
 // -----------------------------------------------------
 // Infrastructure: messaging (Kafka)
 // -----------------------------------------------------
-builder.Services.AddSingleton<Shared.Infrastructure.Kafka.IKafkaProducer, Shared.Infrastructure.Kafka.KafkaProducer>();
+builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaProducer, BuildingBlocks.Kafka.KafkaProducer>();
 builder.Services.AddSingleton<IKafkaEventProducer, KafkaEventProducer>();
+builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaConsumer, BuildingBlocks.Kafka.KafkaConsumer>();
 builder.Services.AddHostedService<MitIdVerifiedConsumer>();
 
 // -----------------------------------------------------

@@ -3,14 +3,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
-namespace Shared.Infrastructure.Kafka
-{
-    public interface IKafkaProducer
-    {
-        Task PublishAsync<T>(string topic, T message, CancellationToken ct = default);
-        Task PublishAsync<T>(string topic, string key, T message, CancellationToken ct = default);
-    }
+using BuildingBlocks.Contracts.Messaging;
 
+namespace BuildingBlocks.Kafka
+{
     public class KafkaProducer : IKafkaProducer, IDisposable
     {
         private readonly IProducer<string, string> _producer;

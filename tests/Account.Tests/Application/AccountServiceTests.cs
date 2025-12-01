@@ -1,25 +1,25 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Xunit;
+using Moq;
+using AutoMapper;
+using Microsoft.Extensions.Logging;
 using Application.BusinessLogic;
 using Application.DTOs;
 using Application.Interfaces;
 using Domain.Models;
 using Domain.Repositories;
-using Microsoft.Extensions.Logging;
-using Moq;
-using Shared.Contracts.Events;
-using Shared.Contracts.Messaging;
-using AutoMapper;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
+using BuildingBlocks.Contracts.Events;
+using BuildingBlocks.Contracts.Messaging;
 
-namespace AccountSerrvice.Test.Application
+namespace Account.Tests.Application
 {
     public class AccountServiceTests
     {
         private readonly Mock<IAccountRepository> _repoMock;
         private readonly Mock<IPasswordHasher> _hasherMock;
-        private readonly Mock<IKafkaProducer> _kafkaMock;
+        private readonly Mock<BuildingBlocks.Contracts.Messaging.IKafkaProducer> _kafkaMock;
         private readonly Mock<IAccountCache> _cacheMock;
         private readonly Mock<IMapper> _mapperMock;
         private readonly Mock<ILogger<global::Application.BusinessLogic.AccountService>> _loggerMock;
@@ -29,7 +29,7 @@ namespace AccountSerrvice.Test.Application
         {
             _repoMock = new Mock<IAccountRepository>();
             _hasherMock = new Mock<IPasswordHasher>();
-            _kafkaMock = new Mock<IKafkaProducer>();
+            _kafkaMock = new Mock<BuildingBlocks.Contracts.Messaging.IKafkaProducer>();
             _cacheMock = new Mock<IAccountCache>();
             _mapperMock = new Mock<IMapper>();
             _loggerMock = new Mock<ILogger<global::Application.BusinessLogic.AccountService>>();
@@ -37,7 +37,7 @@ namespace AccountSerrvice.Test.Application
             _sut = new global::Application.BusinessLogic.AccountService(
                 _repoMock.Object,
                 _hasherMock.Object,
-                _kafkaMock.Object,
+                new Infrastructure.Kafka.AccountCreatedProducer(_kafkaMock.Object),
                 _cacheMock.Object,
                 _mapperMock.Object,
                 _loggerMock.Object);
@@ -55,8 +55,8 @@ namespace AccountSerrvice.Test.Application
 
             _hasherMock.Setup(h => h.HashPassword(dto.Password)).Returns(hashedPassword);
             
-            _mapperMock.Setup(m => m.Map<AccountDto>(It.IsAny<Account>()))
-                .Returns((Account a) => new AccountDto { Id = a.Id, Email = a.Email });
+            _mapperMock.Setup(m => m.Map<AccountDto>(It.IsAny<Domain.Models.Account>()))
+                .Returns((Domain.Models.Account a) => new AccountDto { Id = a.Id, Email = a.Email });
 
             // Act
             var result = await _sut.RegisterAccountAsync(dto, CancellationToken.None);
@@ -66,7 +66,7 @@ namespace AccountSerrvice.Test.Application
             Assert.Equal(dto.Email, result.Email);
             Assert.NotEqual(Guid.Empty, result.Id);
 
-            _repoMock.Verify(r => r.CreateAsync(It.Is<Account>(a => 
+            _repoMock.Verify(r => r.CreateAsync(It.Is<Domain.Models.Account>(a => 
                 a.Email == dto.Email && 
                 a.PasswordHash == hashedPassword), It.IsAny<CancellationToken>()), Times.Once);
 
@@ -81,7 +81,7 @@ namespace AccountSerrvice.Test.Application
         {
             // Arrange
             var dto = new RegisterAccountDto { Email = "existing@example.com", Password = "password123" };
-            var existingAccount = Account.Reconstruct(Guid.NewGuid(), dto.Email, "hash");
+            var existingAccount = Domain.Models.Account.Reconstruct(Guid.NewGuid(), dto.Email, "hash");
 
             _repoMock.Setup(r => r.EmailExistsAsync(dto.Email, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
@@ -90,7 +90,7 @@ namespace AccountSerrvice.Test.Application
             await Assert.ThrowsAsync<InvalidOperationException>(() => 
                 _sut.RegisterAccountAsync(dto, CancellationToken.None));
 
-            _repoMock.Verify(r => r.CreateAsync(It.IsAny<Account>(), It.IsAny<CancellationToken>()), Times.Never);
+            _repoMock.Verify(r => r.CreateAsync(It.IsAny<Domain.Models.Account>(), It.IsAny<CancellationToken>()), Times.Never);
             _kafkaMock.Verify(k => k.PublishAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
@@ -100,7 +100,7 @@ namespace AccountSerrvice.Test.Application
             // Arrange
             var email = "test@example.com";
             var password = "password123";
-            var account = Account.Reconstruct(Guid.NewGuid(), email, "hashed_password");
+            var account = Domain.Models.Account.Reconstruct(Guid.NewGuid(), email, "hashed_password");
 
             _repoMock.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(account);
@@ -124,7 +124,7 @@ namespace AccountSerrvice.Test.Application
             var password = "password123";
 
             _repoMock.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Account?)null);
+                .ReturnsAsync((Domain.Models.Account?)null);
 
             // Act
             var result = await _sut.AuthenticateAsync(email, password, CancellationToken.None);
@@ -141,7 +141,7 @@ namespace AccountSerrvice.Test.Application
             // Arrange
             var email = "test@example.com";
             var password = "wrong_password";
-            var account = Account.Reconstruct(Guid.NewGuid(), email, "hashed_password");
+            var account = Domain.Models.Account.Reconstruct(Guid.NewGuid(), email, "hashed_password");
 
             _repoMock.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(account);
@@ -162,7 +162,7 @@ namespace AccountSerrvice.Test.Application
         {
             // Arrange
             var id = Guid.NewGuid();
-            var account = Account.Reconstruct(id, "test@example.com", "hash");
+            var account = Domain.Models.Account.Reconstruct(id, "test@example.com", "hash");
 
             _repoMock.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(account);
@@ -170,8 +170,8 @@ namespace AccountSerrvice.Test.Application
             _cacheMock.Setup(c => c.GetAccountAsync(id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((AccountDto?)null);
 
-            _mapperMock.Setup(m => m.Map<AccountDto>(It.IsAny<Account>()))
-                .Returns((Account a) => new AccountDto { Id = a.Id, Email = a.Email });
+            _mapperMock.Setup(m => m.Map<AccountDto>(It.IsAny<Domain.Models.Account>()))
+                .Returns((Domain.Models.Account a) => new AccountDto { Id = a.Id, Email = a.Email });
 
             // Act
             var result = await _sut.GetAccountByIdAsync(id, CancellationToken.None);
@@ -189,7 +189,7 @@ namespace AccountSerrvice.Test.Application
             var id = Guid.NewGuid();
 
             _repoMock.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Account?)null);
+                .ReturnsAsync((Domain.Models.Account?)null);
 
             // Act
             var result = await _sut.GetAccountByIdAsync(id, CancellationToken.None);

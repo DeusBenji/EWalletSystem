@@ -29,7 +29,7 @@
     <ProjectReference Include="..\..\src\Services\Token\Domain\Domain.csproj" />
     <ProjectReference Include="..\..\src\Services\Token\Infrastructure\Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Services\Token\API\Api.csproj" />
-    <ProjectReference Include="..\..\src\Shared\Shared\Shared\Shared.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\BuildingBlocks.csproj" />
   </ItemGroup>
 
   <ItemGroup>
