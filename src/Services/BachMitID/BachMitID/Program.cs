@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using BachMitID;
 using BachMitID.Application.BusinessLogicLayer;
 using BachMitID.Application.BusinessLogicLayer.Interface;
@@ -9,16 +9,18 @@ using BachMitID.Infrastructure.Kafka;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using StackExchange.Redis;
+using System.Text;
 using static BachMitID.Infrastructure.Kafka.MitIdAccountEventPublisher;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-
 
 // Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
@@ -41,6 +43,11 @@ var clientId = authSection["ClientId"];
 var clientSecret = authSection["ClientSecret"];
 var callbackPath = authSection["CallbackPath"] ?? "/signin-oidc";
 
+// 🔐 JWT settings til gateway-tokens
+var jwtSection = builder.Configuration.GetSection("Jwt");
+var jwtIssuer = jwtSection["Issuer"];
+var jwtAudience = jwtSection["Audience"];
+var jwtKey = jwtSection["Key"];
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     ConnectionMultiplexer.Connect(redisConn));
@@ -63,9 +70,11 @@ builder.Services.AddSingleton<IMapper>(sp =>
     return config.CreateMapper();
 });
 
+// 🔐 Authentication: Cookies + OIDC + JWT Bearer (fra gateway)
 builder.Services
     .AddAuthentication(options =>
     {
+        // Stadig standard til web-login via MitID
         options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
     })
@@ -89,20 +98,36 @@ builder.Services
         options.CallbackPath = callbackPath;
         options.GetClaimsFromUserInfoEndpoint = true;
         options.RequireHttpsMetadata = true;
+    })
+    // 🔽 Her kommer JWT Bearer til interne kald fra ApiGateway
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateIssuerSigningKey = true,
+            ValidateLifetime = true,
+
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtKey!))
+        };
     });
 
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Swagger middleware � typisk kun i Development
+// Swagger middleware – typisk kun i Development
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "BachMitID API v1");
-        // Hvis du vil have swagger p� roden: options.RoutePrefix = string.Empty;
+        // options.RoutePrefix = string.Empty;
     });
 }
 
