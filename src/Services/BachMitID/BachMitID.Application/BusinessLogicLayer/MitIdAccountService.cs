@@ -48,7 +48,7 @@ namespace BachMitID.Application.BusinessLogicLayer
             if (dob > today.AddYears(-age)) age--;
             bool isAdult = age >= 18;
 
-            Guid testId = Guid.Empty; // TODO: erstattes med rigtig AccountID når Account-service er koblet på
+            Guid testId = new Guid("3657D51F-3BA1-46FD-9857-050666D85F9E");
 
             // Hash sub før vi gemmer
             var hashedSub = SubIdHasher.Hash(sub);
