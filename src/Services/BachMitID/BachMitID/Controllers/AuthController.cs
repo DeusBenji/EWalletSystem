@@ -1,7 +1,10 @@
-﻿using BachMitID.Application.BusinessLogicLayer;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 using BachMitID.Application.BusinessLogicLayer.Interface;
-using BachMitID.Application.Contracts;
-using BachMitID.Infrastructure.Kafka;
+using BachMitID.Application.DTOs;
+using BuildingBlocks.Contracts.Events;
+using BuildingBlocks.Contracts.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -13,16 +16,16 @@ namespace BachMitID.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IMitIdAccountService _mitIdAccountService;
-        private readonly IMitIdAccountEventPublisher _eventPublisher;
+        private readonly IKafkaProducer _kafkaProducer;
         private readonly ILogger<AuthController> _logger;
 
         public AuthController(
             IMitIdAccountService mitIdAccountService,
-            IMitIdAccountEventPublisher eventPublisher,
+            IKafkaProducer kafkaProducer,
             ILogger<AuthController> logger)
         {
             _mitIdAccountService = mitIdAccountService;
-            _eventPublisher = eventPublisher;
+            _kafkaProducer = kafkaProducer;
             _logger = logger;
         }
 
@@ -40,35 +43,59 @@ namespace BachMitID.Controllers
 
         [Authorize]
         [HttpGet("result")]
-        public async Task<IActionResult> Result()
+        public async Task<IActionResult> Result(CancellationToken ct = default)
         {
             // 1) Opret / hent MitID-account ud fra claims og gem i DB
-            var dto = await _mitIdAccountService.CreateFromClaimsAsync(User);
+            var result = await _mitIdAccountService.CreateFromClaimsAsync(User);
 
-            if (dto == null)
+            if (result == null)
                 return BadRequest("Could not create MitID account from claims.");
 
-            // 2) Prøv at sende event – men lad det IKKE vælte login hvis Kafka fejler
-            try
+            var dto = result.Account;
+
+            // 2) Kun send 'created'-event hvis account rent faktisk er ny
+            if (result.IsNew)
             {
-                var evt = new MitIdAccountCreatedEvent
+                try
                 {
-                    Id = dto.Id,
-                    AccountId = dto.AccountId,
-                    SubId = dto.SubId,
-                    IsAdult = dto.IsAdult
-                };
+                    var @event = new MitIdAccountCreated(
+                        Id: dto.Id,
+                        AccountId: dto.AccountId,
+                        SubId: dto.SubId,
+                        IsAdult: dto.IsAdult,
+                        CreatedAt: DateTime.UtcNow
+                    );
 
-                await _eventPublisher.PublishCreatedAsync(evt);
-                _logger.LogInformation("Published MitIdAccountCreatedEvent for AccountId {AccountId}", dto.AccountId);
+                    await _kafkaProducer.PublishAsync(
+                        topic: Topics.MitIdAccountCreated,
+                        key: dto.AccountId.ToString(),
+                        message: @event,
+                        ct: ct
+                    );
+
+                    _logger.LogInformation(
+                        "Published MitIdAccountCreated for AccountId {AccountId}",
+                        dto.AccountId
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Failed to publish MitIdAccountCreated. Continuing without event."
+                    );
+                    // login må stadig ikke fejle pga Kafka
+                }
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Failed to publish MitIdAccountCreatedEvent. Continuing without event.");
-                // Vi failer IKKE login – vi returnerer stadig DTO
+                _logger.LogInformation(
+                    "MitID account already exists for AccountId {AccountId}. No 'created' event published.",
+                    dto.AccountId
+                );
             }
 
-            // 3) Returnér noget synligt (JSON) så du kan se det i browseren
+            // 3) Returnér DTO til klienten
             return Ok(dto);
         }
 

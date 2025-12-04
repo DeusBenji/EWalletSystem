@@ -2,106 +2,120 @@
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using BachMitID.Application.Contracts;
-using BachMitID.Infrastructure.Kafka;
-using BachMitID.Infrastructure.Kafka.Interfaces; // hvis du bruger dette namespace til interfacet
-using Confluent.Kafka;
+using BuildingBlocks.Contracts.Events;
+using BuildingBlocks.Contracts.Messaging;
 using Moq;
 using Xunit;
 
-public class KafkaTestMitIdAccount
+public class MitIdAccountPublisherTests
 {
+    private class TestPublisher
+    {
+        private readonly IKafkaProducer _producer;
+
+        public TestPublisher(IKafkaProducer producer)
+        {
+            _producer = producer;
+        }
+
+        public Task PublishAsync(MitIdAccountCreated evt, string topic, CancellationToken ct = default)
+        {
+            return _producer.PublishAsync(topic, evt.AccountId.ToString(), evt, ct);
+        }
+    }
+
     [Fact]
-    public async Task PublishCreatedAsync_SendsMessage_WithCorrectTopicKeyAndJson()
+    public async Task PublishAsync_SendsMessage_WithCorrectTopicKeyAndJson()
     {
         // arrange
-        var mockProducer = new Mock<IProducer<string, string>>();
+        var mockKafka = new Mock<IKafkaProducer>();
 
         string? capturedTopic = null;
-        Message<string, string>? capturedMessage = null;
+        string? capturedKey = null;
+        string? capturedJson = null;
 
-        // Når publisher kalder ProduceAsync, fanger vi topic + message
-        mockProducer
-            .Setup(p => p.ProduceAsync(
+        mockKafka
+            .Setup(p => p.PublishAsync(
                 It.IsAny<string>(),
-                It.IsAny<Message<string, string>>(),
+                It.IsAny<string>(),
+                It.IsAny<object>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<string, Message<string, string>, CancellationToken>((topic, message, token) =>
+            .Callback<string, string, object, CancellationToken>((topic, key, message, ct) =>
             {
                 capturedTopic = topic;
-                capturedMessage = message;
+                capturedKey = key;
+                capturedJson = JsonSerializer.Serialize(message);
             })
-            .ReturnsAsync(new DeliveryResult<string, string>());
+            .Returns(Task.CompletedTask);
 
-        var topic = "test.mitid.account.created";
-        var publisher = new MitIdAccountEventPublisher(mockProducer.Object, topic);
+        var publisher = new TestPublisher(mockKafka.Object);
+        var topicName = "mitid-account-created";
 
-        var evt = new MitIdAccountCreatedEvent
-        {
-            Id = Guid.NewGuid(),
-            AccountId = Guid.NewGuid(),
-            SubId = "hashed-sub-123",
-            IsAdult = true
-        };
+        var evt = new MitIdAccountCreated(
+            Id: Guid.NewGuid(),
+            AccountId: Guid.NewGuid(),
+            SubId: "hashed-sub-123",
+            IsAdult: true,
+            CreatedAt: DateTime.UtcNow
+        );
 
         // act
-        await publisher.PublishCreatedAsync(evt);
+        await publisher.PublishAsync(evt, topicName);
 
         // assert
-        // 1) Topic skal være korrekt
-        Assert.Equal(topic, capturedTopic);
+        Assert.Equal(topicName, capturedTopic);
+        Assert.Equal(evt.AccountId.ToString(), capturedKey);
 
-        // 2) Message må ikke være null
-        Assert.NotNull(capturedMessage);
-        Assert.Equal(evt.AccountId.ToString(), capturedMessage!.Key);
+        // deserialize JSON to validate content
+        var deserialized = JsonSerializer.Deserialize<MitIdAccountCreated>(capturedJson!);
 
-        // 3) JSON-indhold skal svare til eventet
-        var deserialized = JsonSerializer.Deserialize<MitIdAccountCreatedEvent>(capturedMessage.Value);
         Assert.NotNull(deserialized);
         Assert.Equal(evt.Id, deserialized!.Id);
         Assert.Equal(evt.AccountId, deserialized.AccountId);
         Assert.Equal(evt.SubId, deserialized.SubId);
         Assert.Equal(evt.IsAdult, deserialized.IsAdult);
 
-        // 4) Producer skal være kaldt præcis én gang
-        mockProducer.Verify(p => p.ProduceAsync(
-                topic,
-                It.IsAny<Message<string, string>>(),
+        mockKafka.Verify(p => p.PublishAsync(
+                topicName,
+                evt.AccountId.ToString(),
+                It.IsAny<object>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
     [Fact]
-    public async Task PublishCreatedAsync_CallsProducerOnce_EvenForSameEvent()
+    public async Task PublishAsync_CallsProducer_Once()
     {
         // arrange
-        var mockProducer = new Mock<IProducer<string, string>>();
+        var mockKafka = new Mock<IKafkaProducer>();
 
-        mockProducer
-            .Setup(p => p.ProduceAsync(
+        mockKafka
+            .Setup(p => p.PublishAsync(
                 It.IsAny<string>(),
-                It.IsAny<Message<string, string>>(),
+                It.IsAny<string>(),
+                It.IsAny<object>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new DeliveryResult<string, string>());
+            .Returns(Task.CompletedTask);
 
-        var topic = "another.test.topic";
-        var publisher = new MitIdAccountEventPublisher(mockProducer.Object, topic);
+        var publisher = new TestPublisher(mockKafka.Object);
+        var topicName = "mitid-account-created";
 
-        var evt = new MitIdAccountCreatedEvent
-        {
-            Id = Guid.NewGuid(),
-            AccountId = Guid.NewGuid(),
-            SubId = "hashed-sub-999",
-            IsAdult = false
-        };
+        var evt = new MitIdAccountCreated(
+            Id: Guid.NewGuid(),
+            AccountId: Guid.NewGuid(),
+            SubId: "hashed-sub-999",
+            IsAdult: false,
+            CreatedAt: DateTime.UtcNow
+        );
 
         // act
-        await publisher.PublishCreatedAsync(evt);
+        await publisher.PublishAsync(evt, topicName);
 
         // assert
-        mockProducer.Verify(p => p.ProduceAsync(
-                topic,
-                It.Is<Message<string, string>>(m => m.Key == evt.AccountId.ToString()),
+        mockKafka.Verify(p => p.PublishAsync(
+                topicName,
+                evt.AccountId.ToString(),
+                It.IsAny<object>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

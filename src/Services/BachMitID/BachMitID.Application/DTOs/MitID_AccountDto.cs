@@ -22,6 +22,11 @@
         {
             Id = id;
         }
+        public class MitIdAccountResult
+        {
+            public MitIdAccountDto Account { get; set; } = null!;
+            public bool IsNew { get; set; }
+        }
     }
 }
  

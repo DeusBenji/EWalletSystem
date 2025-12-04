@@ -9,11 +9,11 @@ namespace BachMitID.Domain.Interfaces
 {
     public interface IAccDbAccess
     {
-        Task<Account?> GetAccountById(Guid accountId);
-        Task<Guid> CreateAccount(Account acc);
-        Task<List<Account>> GetAccounts();
-        Task<bool> DeleteAccount(Guid accountId);
-        Task<bool> UpdateAccount(Account acc);
+        Task<Account?> GetAccountByIdAsync(Guid accountId);
+        Task<Guid> CreateAccountAsync(Account acc);
+        Task<List<Account>> GetAccountsAsync();
+        Task<bool> DeleteAccountAsync(Guid accountId);
+        Task<bool> UpdateAccountAsync(Account acc);
 
 
     }

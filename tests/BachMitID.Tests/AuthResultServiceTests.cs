@@ -43,6 +43,10 @@ public class AuthResultServiceTests
 
         MitID_Account? savedEntity = null;
 
+        // Ingen eksisterende account på samme hashed SubId
+        mockDb.Setup(db => db.GetMitIdAccountBySubId(It.IsAny<string>()))
+              .ReturnsAsync((MitID_Account?)null);
+
         // repo gemmer entity og returnerer dens ID
         mockDb.Setup(db => db.CreateMitIdAccount(It.IsAny<MitID_Account>()))
               .Callback<MitID_Account>(e => savedEntity = e)
@@ -70,25 +74,30 @@ public class AuthResultServiceTests
 
         // assert
         Assert.NotNull(result);
-        Assert.NotEqual(Guid.Empty, result!.Id); // Guid er genereret korrekt
+        Assert.True(result!.IsNew);  // skal være ny-oprettet i denne test
+
+        var dto = result.Account;
+
+        Assert.NotNull(dto);
+        Assert.NotEqual(Guid.Empty, dto.Id); // Guid er genereret korrekt
 
         // *** SUB-ID HASH ***
         var expectedHash = SubIdHasher.Hash("sub-123");
-        Assert.Equal(expectedHash, result.SubId);
+        Assert.Equal(expectedHash, dto.SubId);
 
-        Assert.True(result.IsAdult);
+        Assert.True(dto.IsAdult);
 
         // entity der blev gemt i DB skal matche DTO
         Assert.NotNull(savedEntity);
-        Assert.Equal(result.Id, savedEntity!.ID);
+        Assert.Equal(dto.Id, savedEntity!.ID);
         Assert.Equal(expectedHash, savedEntity.SubID);
 
-        // DB skal være kaldt præcis én gang
+        // DB skal være kaldt præcis én gang til Create
         mockDb.Verify(db => db.CreateMitIdAccount(It.IsAny<MitID_Account>()), Times.Once);
 
-        // Cache bør også være kaldt én gang med samme accountId
+        // Cache bør også være kaldt én gang
         mockCache.Verify(c => c.SetAsync(
-                It.Is<MitIdAccountDto>(d => d.Id == result.Id),
+                It.Is<MitIdAccountDto>(d => d.Id == dto.Id),
                 It.IsAny<TimeSpan>()),
             Times.Once);
     }
@@ -209,7 +218,11 @@ public class AuthResultServiceTests
                       IsAdult = true
                   });
 
-        // DB fejler
+        // ingen eksisterende account på SubId
+        mockDb.Setup(db => db.GetMitIdAccountBySubId(It.IsAny<string>()))
+              .ReturnsAsync((MitID_Account?)null);
+
+        // DB fejler ved create
         mockDb.Setup(db => db.CreateMitIdAccount(It.IsAny<MitID_Account>()))
               .ThrowsAsync(new Exception("DB is down"));
 
