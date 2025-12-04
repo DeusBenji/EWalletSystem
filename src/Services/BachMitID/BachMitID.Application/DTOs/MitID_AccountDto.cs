@@ -4,7 +4,7 @@
     {
         public Guid Id { get; set; }          
         public Guid AccountId { get; set; } 
-        public string SubId { get; set; } = string.Empty;
+        public string SubId { get; set; }
         public bool IsAdult { get; set; }
 
         public MitIdAccountDto() { }

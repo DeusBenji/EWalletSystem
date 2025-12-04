@@ -13,34 +13,39 @@ using Domain.Repositories;
 using BuildingBlocks.Contracts.Events;
 using BuildingBlocks.Contracts.Messaging;
 
+// Alias så vi er sikre på at bruge klassen og ikke et namespace
+using AccountServiceImpl = Application.BusinessLogic.AccountService;
+
 namespace Account.Tests.Application
 {
     public class AccountServiceTests
     {
         private readonly Mock<IAccountRepository> _repoMock;
         private readonly Mock<IPasswordHasher> _hasherMock;
-        private readonly Mock<BuildingBlocks.Contracts.Messaging.IKafkaProducer> _kafkaMock;
+        private readonly Mock<IKafkaProducer> _kafkaMock;
         private readonly Mock<IAccountCache> _cacheMock;
         private readonly Mock<IMapper> _mapperMock;
-        private readonly Mock<ILogger<global::Application.BusinessLogic.AccountService>> _loggerMock;
-        private readonly global::Application.BusinessLogic.AccountService _sut;
+        private readonly Mock<ILogger<AccountServiceImpl>> _loggerMock;
+
+        private readonly AccountServiceImpl _sut;
 
         public AccountServiceTests()
         {
             _repoMock = new Mock<IAccountRepository>();
             _hasherMock = new Mock<IPasswordHasher>();
-            _kafkaMock = new Mock<BuildingBlocks.Contracts.Messaging.IKafkaProducer>();
+            _kafkaMock = new Mock<IKafkaProducer>();
             _cacheMock = new Mock<IAccountCache>();
             _mapperMock = new Mock<IMapper>();
-            _loggerMock = new Mock<ILogger<global::Application.BusinessLogic.AccountService>>();
+            _loggerMock = new Mock<ILogger<AccountServiceImpl>>();
 
-            _sut = new global::Application.BusinessLogic.AccountService(
+            _sut = new AccountServiceImpl(
                 _repoMock.Object,
                 _hasherMock.Object,
-                new Infrastructure.Kafka.AccountCreatedProducer(_kafkaMock.Object),
+                _kafkaMock.Object,
                 _cacheMock.Object,
                 _mapperMock.Object,
-                _loggerMock.Object);
+                _loggerMock.Object
+            );
         }
 
         [Fact]
@@ -54,7 +59,7 @@ namespace Account.Tests.Application
                 .ReturnsAsync(false);
 
             _hasherMock.Setup(h => h.HashPassword(dto.Password)).Returns(hashedPassword);
-            
+
             _mapperMock.Setup(m => m.Map<AccountDto>(It.IsAny<Domain.Models.Account>()))
                 .Returns((Domain.Models.Account a) => new AccountDto { Id = a.Id, Email = a.Email });
 
@@ -66,14 +71,19 @@ namespace Account.Tests.Application
             Assert.Equal(dto.Email, result.Email);
             Assert.NotEqual(Guid.Empty, result.Id);
 
-            _repoMock.Verify(r => r.CreateAsync(It.Is<Domain.Models.Account>(a => 
-                a.Email == dto.Email && 
-                a.PasswordHash == hashedPassword), It.IsAny<CancellationToken>()), Times.Once);
+            _repoMock.Verify(r => r.CreateAsync(It.Is<Domain.Models.Account>(a =>
+                    a.Email == dto.Email &&
+                    a.PasswordHash == hashedPassword),
+                It.IsAny<CancellationToken>()),
+                Times.Once);
 
             _kafkaMock.Verify(k => k.PublishAsync(
-                Topics.AccountCreated, 
-                It.Is<AccountCreated>(e => e.AccountId == result.Id && e.Email == result.Email), 
-                It.IsAny<CancellationToken>()), Times.Once);
+                    Topics.AccountCreated,
+                    It.Is<AccountCreated>(e =>
+                        e.AccountId == result.Id &&
+                        e.Email == result.Email),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
@@ -81,17 +91,21 @@ namespace Account.Tests.Application
         {
             // Arrange
             var dto = new RegisterAccountDto { Email = "existing@example.com", Password = "password123" };
-            var existingAccount = Domain.Models.Account.Reconstruct(Guid.NewGuid(), dto.Email, "hash");
 
             _repoMock.Setup(r => r.EmailExistsAsync(dto.Email, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
             // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(() => 
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 _sut.RegisterAccountAsync(dto, CancellationToken.None));
 
             _repoMock.Verify(r => r.CreateAsync(It.IsAny<Domain.Models.Account>(), It.IsAny<CancellationToken>()), Times.Never);
-            _kafkaMock.Verify(k => k.PublishAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
+
+            _kafkaMock.Verify(k => k.PublishAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<AccountCreated>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         [Fact]

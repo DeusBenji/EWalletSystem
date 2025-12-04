@@ -11,7 +11,7 @@ namespace BachMitID.Domain.Model
 
         public Guid ID { get; set; }
         public Guid AccountID { get; set; }
-        public string SubID { get; set; } = string.Empty;
+        public string SubID { get; set; } = null!;
         public bool IsAdult { get; set; }
         //Empty constructor
         public MitID_Account() { }

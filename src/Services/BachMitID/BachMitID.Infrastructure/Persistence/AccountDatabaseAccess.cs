@@ -28,7 +28,7 @@ namespace BachMitID.Infrastructure.Databaselayer
 
             const string queryString = @"
                 SELECT Id, Email
-                FROM dbo.Accounts
+                FROM dbo.Account
                 WHERE Id = @Id;";
 
             using (SqlConnection con = new SqlConnection(_connectionString))
@@ -52,7 +52,7 @@ namespace BachMitID.Infrastructure.Databaselayer
         public async Task<Guid> CreateAccountAsync(Account acc)
         {
             const string queryString = @"
-                INSERT INTO dbo.Accounts (Id, Email)
+                INSERT INTO dbo.Account (Id, Email)
                 OUTPUT INSERTED.Id 
                 VALUES (@Id, @Email);";
 
@@ -75,7 +75,7 @@ namespace BachMitID.Infrastructure.Databaselayer
 
             const string queryString = @"
                 SELECT Id, Email
-                FROM dbo.Accounts;";
+                FROM dbo.Account;";
 
             using (SqlConnection con = new SqlConnection(_connectionString))
             using (SqlCommand readCommand = new SqlCommand(queryString, con))
@@ -99,7 +99,7 @@ namespace BachMitID.Infrastructure.Databaselayer
             int rowsAffected = 0;
 
             const string queryString = @"
-                UPDATE dbo.Accounts
+                UPDATE dbo.Account
                 SET Email = @Email
                 WHERE Id = @Id;";
 
@@ -121,7 +121,7 @@ namespace BachMitID.Infrastructure.Databaselayer
             int rowsAffected = 0;
 
             const string queryString = @"
-                DELETE FROM dbo.Accounts
+                DELETE FROM dbo.Account
                 WHERE Id = @Id;";
 
             using (SqlConnection con = new SqlConnection(_connectionString))
@@ -141,7 +141,6 @@ namespace BachMitID.Infrastructure.Databaselayer
             Guid id = reader.GetGuid(reader.GetOrdinal("Id"));
             string email = reader.GetString(reader.GetOrdinal("Email"));
 
-            // Din BachMitID.Domain.Model.Account skal have ctor: Account(Guid id, string email)
             return new Account(id, email);
         }
     }

@@ -46,15 +46,6 @@ namespace AccountSerrvicesTest.API
                     Email = d.Email
                 });
 
-            // Application -> API (AccountDto -> AccountStatusResponse)
-            _mapperMock
-                .Setup(m => m.Map<AccountStatusResponse>(It.IsAny<AccountDto>()))
-                .Returns((AccountDto d) => new AccountStatusResponse
-                {
-                    IsAdult = d.IsAdult,
-                    IsMitIdLinked = d.IsMitIdLinked
-                });
-
             _sut = new AccountController(
                 _serviceMock.Object,
                 _loggerMock.Object,
@@ -87,8 +78,6 @@ namespace AccountSerrvicesTest.API
             {
                 Id = Guid.NewGuid(),
                 Email = request.Email,
-                IsAdult = false,
-                IsMitIdLinked = false
             };
 
             _serviceMock
@@ -232,9 +221,7 @@ namespace AccountSerrvicesTest.API
             var dto = new AccountDto
             {
                 Id = id,
-                Email = "test@example.com",
-                IsAdult = true,
-                IsMitIdLinked = true
+                Email = "test@example.com"
             };
 
             _serviceMock
@@ -275,9 +262,7 @@ namespace AccountSerrvicesTest.API
             var dto = new AccountDto
             {
                 Id = id,
-                Email = "test@example.com",
-                IsAdult = true,
-                IsMitIdLinked = false
+                Email = "test@example.com"
             };
 
             _serviceMock

@@ -58,23 +58,22 @@ namespace BachMitID.Controllers
             {
                 try
                 {
-                    var @event = new MitIdAccountCreated(
-                        Id: dto.Id,
+                    var @event = new MitIdVerified(
                         AccountId: dto.AccountId,
-                        SubId: dto.SubId,
+                        MitIdSubId: dto.SubId,
                         IsAdult: dto.IsAdult,
-                        CreatedAt: DateTime.UtcNow
+                        VerifiedAt: DateTime.UtcNow
                     );
 
                     await _kafkaProducer.PublishAsync(
-                        topic: Topics.MitIdAccountCreated,
+                        topic: Topics.MitIdVerified,
                         key: dto.AccountId.ToString(),
                         message: @event,
                         ct: ct
                     );
 
                     _logger.LogInformation(
-                        "Published MitIdAccountCreated for AccountId {AccountId}",
+                        "Published MitIdVerified for AccountId {AccountId}",
                         dto.AccountId
                     );
                 }
@@ -82,7 +81,7 @@ namespace BachMitID.Controllers
                 {
                     _logger.LogError(
                         ex,
-                        "Failed to publish MitIdAccountCreated. Continuing without event."
+                        "Failed to publish MitIdVerified. Continuing without event."
                     );
                     // login må stadig ikke fejle pga Kafka
                 }

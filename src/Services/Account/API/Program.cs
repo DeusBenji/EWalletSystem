@@ -50,7 +50,6 @@ builder.Services.AddAutoMapper(cfg =>
 // Cross-cutting services
 builder.Services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaProducer, BuildingBlocks.Kafka.KafkaProducer>();
-builder.Services.AddSingleton<IKafkaProducer, AccountCreatedProducer>();
 builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaConsumer, BuildingBlocks.Kafka.KafkaConsumer>();
 
 // Redis connection

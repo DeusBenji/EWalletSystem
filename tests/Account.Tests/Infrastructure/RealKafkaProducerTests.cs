@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Text.Json;
 using Xunit;
 using BuildingBlocks.Kafka;
-using Infrastructure.Kafka;
 
 public class RealKafkaProducerTests : IAsyncLifetime
 {
@@ -55,13 +54,11 @@ public class RealKafkaProducerTests : IAsyncLifetime
         var kafkaProducer = new KafkaProducer(
             config, new NullLogger<KafkaProducer>());
 
-        var producer = new AccountCreatedProducer(kafkaProducer);
-
         var topic = "test-topic";
         var message = new { Id = Guid.NewGuid(), Email = "user@test.dk" };
 
         // Act
-        await producer.PublishAsync(topic, message);
+        await kafkaProducer.PublishAsync(topic, message);
 
         // Assert (consume)
         var consumerConfig = new ConsumerConfig

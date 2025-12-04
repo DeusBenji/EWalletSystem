@@ -43,7 +43,6 @@ namespace Infrastructure.Kafka
                 return;
             }
 
-            account.ApplyMitIdVerification(message.MitIdSubId, message.IsAdult);
             await repo.UpdateAsync(account, ct);
 
             _logger.LogInformation("Updated Account {AccountId} with MitId verification", message.AccountId);

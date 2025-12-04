@@ -1,7 +1,7 @@
-﻿using Application.DTOs;
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Application.DTOs;
 
 namespace Application.Interfaces
 {
@@ -19,5 +19,4 @@ namespace Application.Interfaces
 
         Task<bool> DeactivateAccountAsync(Guid accountId, CancellationToken ct = default);
     }
-
 }

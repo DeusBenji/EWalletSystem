@@ -1,4 +1,7 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
+using System.Threading;
+using System.Threading.Tasks;
 using Domain.Models;
 using Domain.Repositories;
 using Dapper;
@@ -10,6 +13,8 @@ namespace Infrastructure.Persistence
 {
     public sealed class AccountRepository : IAccountRepository
     {
+        private const string TableName = "Account";
+
         private readonly string _connectionString;
         private readonly ILogger<AccountRepository> _logger;
 
@@ -22,69 +27,89 @@ namespace Infrastructure.Persistence
 
         private IDbConnection CreateConnection()
         {
-            try
-            {
-                var connection = new SqlConnection(_connectionString);
-                _logger.LogInformation("Attempting to open SQL connection...");
-                return connection;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to create SQL connection");
-                throw;
-            }
+            var connection = new SqlConnection(_connectionString);
+            _logger.LogDebug("Created SQL connection for {Database}", connection.Database);
+            return connection;
         }
+
+        private static string NormalizeEmail(string? email) =>
+            (email ?? string.Empty).Trim().ToLowerInvariant();
 
         public async Task<Account?> GetByIdAsync(Guid id, CancellationToken ct = default)
         {
-            const string sql = @"
-                SELECT Id, Email, PasswordHash
-                FROM dbo.Accounts
-                WHERE Id = @Id";
+            var sql = $@"
+                SELECT 
+                    ID          AS Id,
+                    Email,
+                    PasswordHash,
+                    CreatedAt,
+                    IsActive
+                FROM {TableName}
+                WHERE ID = @Id";
 
             using var conn = CreateConnection();
+
             var row = await conn.QueryFirstOrDefaultAsync<AccountData>(
                 new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
 
             return row is null
                 ? null
-                : Account.Reconstruct(row.Id, row.Email, row.PasswordHash);
+                : Account.Reconstruct(
+                    row.Id,
+                    row.Email,
+                    row.PasswordHash,
+                    row.CreatedAt,
+                    row.IsActive);
         }
 
         public async Task<Account?> GetByEmailAsync(string email, CancellationToken ct = default)
         {
-            var normalized = (email ?? string.Empty).Trim().ToLowerInvariant();
+            var normalized = NormalizeEmail(email);
 
-            const string sql = @"
-                SELECT Id, Email, PasswordHash
-                FROM dbo.Accounts
+            var sql = $@"
+                SELECT 
+                    ID          AS Id,
+                    Email,
+                    PasswordHash,
+                    CreatedAt,
+                    IsActive
+                FROM {TableName}
                 WHERE Email = @Email";
 
             using var conn = CreateConnection();
+
             var row = await conn.QueryFirstOrDefaultAsync<AccountData>(
                 new CommandDefinition(sql, new { Email = normalized }, cancellationToken: ct));
 
             return row is null
                 ? null
-                : Account.Reconstruct(row.Id, row.Email, row.PasswordHash);
+                : Account.Reconstruct(
+                    row.Id,
+                    row.Email,
+                    row.PasswordHash,
+                    row.CreatedAt,
+                    row.IsActive);
         }
 
         public async Task<Account> CreateAsync(Account account, CancellationToken ct = default)
         {
-            const string sql = @"
-                INSERT INTO dbo.Accounts (Id, Email, PasswordHash)
-                VALUES (@Id, @Email, @PasswordHash)";
+            var sql = $@"
+                INSERT INTO {TableName} (ID, Email, PasswordHash, CreatedAt, IsActive)
+                VALUES (@Id, @Email, @PasswordHash, @CreatedAt, @IsActive)";
 
             using var conn = CreateConnection();
+
             try
             {
                 await conn.ExecuteAsync(new CommandDefinition(
                     sql,
                     new
                     {
-                        account.Id,
+                        Id = account.Id,
                         account.Email,
-                        account.PasswordHash
+                        account.PasswordHash,
+                        account.CreatedAt,
+                        account.IsActive
                     },
                     cancellationToken: ct));
             }
@@ -99,11 +124,12 @@ namespace Infrastructure.Persistence
 
         public async Task<bool> EmailExistsAsync(string email, CancellationToken ct = default)
         {
-            var normalized = (email ?? string.Empty).Trim().ToLowerInvariant();
+            var normalized = NormalizeEmail(email);
 
-            const string sql = @"SELECT 1 FROM dbo.Accounts WHERE Email = @Email";
+            var sql = $@"SELECT 1 FROM {TableName} WHERE Email = @Email";
 
             using var conn = CreateConnection();
+
             var exists = await conn.ExecuteScalarAsync<int?>(
                 new CommandDefinition(sql, new { Email = normalized }, cancellationToken: ct));
 
@@ -112,20 +138,23 @@ namespace Infrastructure.Persistence
 
         public async Task UpdateAsync(Account account, CancellationToken ct = default)
         {
-            const string sql = @"
-                UPDATE dbo.Accounts
+            var sql = $@"
+                UPDATE {TableName}
                 SET Email        = @Email,
-                    PasswordHash = @PasswordHash
-                WHERE Id = @Id";
+                    PasswordHash = @PasswordHash,
+                    IsActive     = @IsActive
+                WHERE ID = @Id";
 
             using var conn = CreateConnection();
+
             var rows = await conn.ExecuteAsync(new CommandDefinition(
                 sql,
                 new
                 {
-                    account.Id,
+                    Id = account.Id,
                     account.Email,
-                    account.PasswordHash
+                    account.PasswordHash,
+                    account.IsActive
                 },
                 cancellationToken: ct));
 
@@ -135,6 +164,11 @@ namespace Infrastructure.Persistence
             }
         }
 
-        private sealed record AccountData(Guid Id, string Email, string? PasswordHash);
+        private sealed record AccountData(
+            Guid Id,
+            string Email,
+            string? PasswordHash,
+            DateTime CreatedAt,
+            bool IsActive);
     }
 }
