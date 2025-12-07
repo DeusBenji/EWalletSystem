@@ -124,6 +124,7 @@ services:
       ASPNETCORE_URLS: "http://+:8080"
       Kafka__BootstrapServers: "kafka:9092"
       ConnectionStrings__Redis: "redis:6379"
+      Fabric__BaseUrl: "http://fabric-resolver:8080"
     depends_on:
       - validation-service
       - account-service

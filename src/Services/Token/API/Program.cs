@@ -1,15 +1,16 @@
-﻿using AutoMapper;
-using Confluent.Kafka;
-using StackExchange.Redis;
+﻿using Api.BackgroundServices;
 using Application.BusinessLogic;
 using Application.Interfaces;
+using BuildingBlocks.Contracts.Messaging;
 using Domain.Repositories;
 using Infrastructure.Blockchain;
-using Infrastructure.Kafka;
-using Infrastructure.Redis;
 using Infrastructure.Persistence;
+using Infrastructure.Redis;
+using StackExchange.Redis;
 using TokenService.Application.Interfaces;
 using TokenService.Infrastructure.Signing;
+using AutoMapper;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,9 +22,26 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // -----------------------------------------------------
+// AutoMapper – manuel registration (som i BachMitID)
+// -----------------------------------------------------
+builder.Services.AddSingleton<IMapper>(sp =>
+{
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+
+    var config = new MapperConfiguration(cfg =>
+    {
+        // Finder alle Profile-klasser i alle loaded assemblies
+        cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies());
+    }, loggerFactory);
+
+    return config.CreateMapper();
+});
+
+// -----------------------------------------------------
 // Application layer
 // -----------------------------------------------------
 builder.Services.AddScoped<ITokenIssuanceService, TokenIssuanceService>();
+builder.Services.AddScoped<IMitIdVerifiedService, MitIdVerifiedService>();
 
 // -----------------------------------------------------
 // Domain repositories (interfaces i Domain, impl i Infrastructure)
@@ -32,7 +50,7 @@ builder.Services.AddSingleton<IAttestationRepository, AttestationRepository>();
 builder.Services.AddSingleton<IAccountAgeStatusRepository, AccountAgeStatusRepository>();
 
 // -----------------------------------------------------
-// Infrastructure: Redis Cache (MANGLEDE!)
+// Infrastructure: Redis Cache
 // -----------------------------------------------------
 // Redis connection
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
@@ -73,11 +91,10 @@ builder.Services.AddSingleton<IKeyProvider, FileKeyProvider>();
 builder.Services.AddSingleton<IVcSigningService, VcSigningService>();
 
 // -----------------------------------------------------
-// Infrastructure: messaging (Kafka)
+// Infrastructure: messaging (Kafka via BuildingBlocks)
 // -----------------------------------------------------
-builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaProducer, BuildingBlocks.Kafka.KafkaProducer>();
-builder.Services.AddSingleton<IKafkaEventProducer, KafkaEventProducer>();
-builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaConsumer, BuildingBlocks.Kafka.KafkaConsumer>();
+builder.Services.AddSingleton<IKafkaProducer, BuildingBlocks.Kafka.KafkaProducer>();
+builder.Services.AddSingleton<IKafkaConsumer, BuildingBlocks.Kafka.KafkaConsumer>();
 builder.Services.AddHostedService<MitIdVerifiedConsumer>();
 
 // -----------------------------------------------------
@@ -113,4 +130,3 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.MapControllers();
 app.Run();
-

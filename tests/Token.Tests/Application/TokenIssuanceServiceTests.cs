@@ -13,7 +13,9 @@ using Domain.Models;
 using Domain.Repositories;
 using TokenService.Application.Interfaces;
 using TokenService.Domain.Models;
+using BuildingBlocks.Kafka;
 using Xunit;
+
 
 namespace TokenSerrvice.Application
 {
@@ -24,7 +26,7 @@ namespace TokenSerrvice.Application
         private readonly Mock<IAttestationRepository> _attestationRepoMock = new();
         private readonly Mock<IFabricAnchorClient> _fabricMock = new();
         private readonly Mock<ITokenHashCalculator> _hashCalculatorMock = new();
-        private readonly Mock<IKafkaEventProducer> _eventProducerMock = new();
+        private readonly Mock<IKafkaProducer> _eventProducerMock = new();
         private readonly Mock<IVcSigningService> _vcSigningMock = new();
 
         private TokenIssuanceService CreateSut()
