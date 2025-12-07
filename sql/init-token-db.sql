@@ -3,33 +3,64 @@ BEGIN
     CREATE DATABASE TokenServiceDB;
 END
 GO
-
 USE TokenServiceDB;
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'AgeAttestations')
+-- ============== AccountAgeStatus ==============
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'AccountAgeStatus')
 BEGIN
-    CREATE TABLE AgeAttestations (
-        Id UNIQUEIDENTIFIER PRIMARY KEY,
-        AccountId UNIQUEIDENTIFIER NOT NULL,
-        SubjectId NVARCHAR(255) NOT NULL,
-        IsAdult BIT NOT NULL,
-        IssuedAt DATETIME2 NOT NULL,
-        ExpiresAt DATETIME2 NOT NULL,
-        Token NVARCHAR(MAX) NOT NULL,
-        Hash NVARCHAR(MAX) NOT NULL
+    CREATE TABLE AccountAgeStatus (
+        AccountId  UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+        IsAdult    BIT              NOT NULL,
+        VerifiedAt DATETIME2        NOT NULL
     );
+
+    -- (Primærnøgle på AccountId er nok; ekstra index er ikke nødvendigt)
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_AgeAttestations_AccountId' AND object_id = OBJECT_ID('AgeAttestations'))
+-- ============== Attestations (AgeAttestation) ==============
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Attestations')
 BEGIN
-    CREATE INDEX IX_AgeAttestations_AccountId ON AgeAttestations (AccountId);
-END
-GO
+    CREATE TABLE Attestations (
+        Id         UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+        AccountId  UNIQUEIDENTIFIER NOT NULL,
+        SubjectId  NVARCHAR(255)    NOT NULL,
+        IsAdult    BIT              NOT NULL,
+        IssuedAt   DATETIME2        NOT NULL,
+        ExpiresAt  DATETIME2        NOT NULL,
+        Token      NVARCHAR(MAX)    NOT NULL,
+        Hash       NVARCHAR(MAX)    NOT NULL
+    );
 
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_AgeAttestations_SubjectId' AND object_id = OBJECT_ID('AgeAttestations'))
-BEGIN
-    CREATE INDEX IX_AgeAttestations_SubjectId ON AgeAttestations (SubjectId);
+    -- Index på AccountId
+    IF NOT EXISTS (
+        SELECT * FROM sys.indexes 
+        WHERE name = 'IX_Attestations_AccountId' 
+          AND object_id = OBJECT_ID('Attestations')
+    )
+    BEGIN
+        CREATE INDEX IX_Attestations_AccountId ON Attestations (AccountId);
+    END
+
+    -- Index på SubjectId (hvis du vil slå op på subjekt)
+    IF NOT EXISTS (
+        SELECT * FROM sys.indexes 
+        WHERE name = 'IX_Attestations_SubjectId' 
+          AND object_id = OBJECT_ID('Attestations')
+    )
+    BEGIN
+        CREATE INDEX IX_Attestations_SubjectId ON Attestations (SubjectId);
+    END
+
+    -- Index på Hash (validations/audit)
+    IF NOT EXISTS (
+        SELECT * FROM sys.indexes 
+        WHERE name = 'IX_Attestations_Hash' 
+          AND object_id = OBJECT_ID('Attestations')
+    )
+    BEGIN
+        CREATE INDEX IX_Attestations_Hash ON Attestations (Hash);
+    END
 END
 GO

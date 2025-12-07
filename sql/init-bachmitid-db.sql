@@ -7,36 +7,55 @@ GO
 USE BachMitID;
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Accounts')
+-- ============== Account (lokal projection af AccountService) ==============
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Account')
 BEGIN
-    CREATE TABLE Accounts (
-        ID UNIQUEIDENTIFIER PRIMARY KEY,
-        Email NVARCHAR(255) NOT NULL,
-        Password NVARCHAR(MAX) NOT NULL
+    CREATE TABLE Account (
+        ID          UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+        Email       NVARCHAR(255)    NOT NULL,
+        CreatedAt   DATETIME2        NOT NULL,
+        IsActive    BIT              NULL
     );
+
+    IF NOT EXISTS (
+        SELECT * FROM sys.indexes 
+        WHERE name = 'IX_Account_Email' 
+          AND object_id = OBJECT_ID('Account')
+    )
+    BEGIN
+        CREATE INDEX IX_Account_Email ON Account (Email);
+    END
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'MitID_Accounts')
+-- ============== MitID_Account (din eksisterende model) ==============
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'MitID_Account')
 BEGIN
-    CREATE TABLE MitID_Accounts (
-        ID UNIQUEIDENTIFIER PRIMARY KEY,
+    CREATE TABLE MitID_Account (
+        ID        UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
         AccountID UNIQUEIDENTIFIER NOT NULL,
-        SubID NVARCHAR(255) NOT NULL,
-        IsAdult BIT NOT NULL
+        SubID     NVARCHAR(255)    NOT NULL,
+        IsAdult   BIT              NOT NULL
     );
-END
-GO
 
-IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_MitID_Accounts_Accounts' AND parent_object_id = OBJECT_ID('MitID_Accounts'))
-BEGIN
-    ALTER TABLE MitID_Accounts
-    ADD CONSTRAINT FK_MitID_Accounts_Accounts FOREIGN KEY (AccountID) REFERENCES Accounts (ID);
-END
-GO
+    -- Index på AccountID
+    IF NOT EXISTS (
+        SELECT * FROM sys.indexes 
+        WHERE name = 'IX_MitID_Account_AccountID' 
+          AND object_id = OBJECT_ID('MitID_Account')
+    )
+    BEGIN
+        CREATE INDEX IX_MitID_Account_AccountID ON MitID_Account (AccountID);
+    END
 
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_MitID_Accounts_AccountID' AND object_id = OBJECT_ID('MitID_Accounts'))
-BEGIN
-    CREATE INDEX IX_MitID_Accounts_AccountID ON MitID_Accounts (AccountID);
+    -- Index på SubID (hashed sub)
+    IF NOT EXISTS (
+        SELECT * FROM sys.indexes 
+        WHERE name = 'IX_MitID_Account_SubID' 
+          AND object_id = OBJECT_ID('MitID_Account')
+    )
+    BEGIN
+        CREATE INDEX IX_MitID_Account_SubID ON MitID_Account (SubID);
+    END
 END
 GO
