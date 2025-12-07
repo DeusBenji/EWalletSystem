@@ -60,7 +60,6 @@ namespace BachMitID.Controllers
                 {
                     var @event = new MitIdVerified(
                         AccountId: dto.AccountId,
-                        MitIdSubId: dto.SubId,
                         IsAdult: dto.IsAdult,
                         VerifiedAt: DateTime.UtcNow
                     );

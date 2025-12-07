@@ -11,6 +11,9 @@ namespace Domain.Models
         public DateTime CreatedAt { get; private set; }
         public bool IsActive { get; private set; }
 
+        public bool IsMitIdVerified { get; private set; }
+        public bool IsAdult { get; private set; }
+
         private Account() { }
 
         public Account(string email, string? passwordHash)
@@ -20,6 +23,9 @@ namespace Domain.Models
             PasswordHash = passwordHash;
             CreatedAt = DateTime.UtcNow;
             IsActive = true;
+
+            IsMitIdVerified = false;
+            IsAdult = false;
         }
 
         public void Deactivate()
@@ -32,12 +38,20 @@ namespace Domain.Models
             PasswordHash = newPasswordHash ?? throw new ArgumentNullException(nameof(newPasswordHash));
         }
 
+        public void MarkMitIdVerified(bool isAdult)
+        {
+            IsMitIdVerified = true;
+            IsAdult = isAdult;
+        }
+
         public static Account Reconstruct(
             Guid id,
             string email,
             string? passwordHash,
             DateTime? createdAt = null,
-            bool isActive = true)
+            bool isActive = true,
+            bool isMitIdVerified = false,
+            bool isAdult = false)
         {
             return new Account
             {
@@ -45,7 +59,9 @@ namespace Domain.Models
                 Email = email,
                 PasswordHash = passwordHash,
                 CreatedAt = createdAt ?? DateTime.UtcNow,
-                IsActive = isActive
+                IsActive = isActive,
+                IsMitIdVerified = isMitIdVerified,
+                IsAdult = isAdult
             };
         }
     }

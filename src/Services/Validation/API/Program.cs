@@ -8,7 +8,6 @@ using Infrastructure.Caching;
 using Infrastructure.Jwt;
 using Infrastructure.Kafka;
 using Infrastructure.Persistence;
-using Infrastructure.Persistence;
 using Infrastructure.Security;
 using ValidationService.Application.Interfaces;
 using ValidationService.Infrastructure.Jwt;
