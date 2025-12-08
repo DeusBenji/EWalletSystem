@@ -1,21 +1,17 @@
-﻿using AutoMapper;
-using Moq;
+﻿using Application.BusinessLogic;
+using Application.DTOs;
+using Application.Interfaces;
 using BuildingBlocks.Contracts.Events;
 using BuildingBlocks.Contracts.Messaging;
+using Domain.Models;
+using Domain.Repositories;
+using Moq;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Application.BusinessLogic;
-using Application.DTOs;
-using Application.Interfaces;
-using Application.Mapping;
-using Domain.Models;
-using Domain.Repositories;
 using TokenService.Application.Interfaces;
 using TokenService.Domain.Models;
-using BuildingBlocks.Kafka;
 using Xunit;
-
 
 namespace TokenSerrvice.Application
 {
@@ -48,7 +44,6 @@ namespace TokenSerrvice.Application
             var accountId = Guid.NewGuid();
             var dto = new IssueTokenDto { AccountId = accountId };
 
-            // TODO: Tilpas ctor/properties til din rigtige AccountAgeStatus-model
             var ageStatus = new AccountAgeStatus(
                 accountId,
                 isAdult: true,
@@ -58,25 +53,31 @@ namespace TokenSerrvice.Application
                 .Setup(x => x.GetAsync(accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ageStatus);
 
-            // Hashcalculator returnerer bare en dummy-hash vi kan asserte på
             _hashCalculatorMock
                 .Setup(x => x.ComputeHash(It.IsAny<string>()))
                 .Returns("dummy-hash");
 
             AgeAttestation? savedAttestation = null;
+
             _attestationRepoMock
                 .Setup(x => x.SaveAsync(It.IsAny<AgeAttestation>(), It.IsAny<CancellationToken>()))
                 .Callback<AgeAttestation, CancellationToken>((att, _) => savedAttestation = att)
                 .Returns(Task.CompletedTask);
 
             string? publishedTopic = null;
+            string? publishedKey = null;
             TokenIssued? publishedEvent = null;
 
             _eventProducerMock
-                .Setup(x => x.PublishAsync(Topics.TokenIssued, It.IsAny<TokenIssued>(), It.IsAny<CancellationToken>()))
-                .Callback<string, TokenIssued, CancellationToken>((topic, @event, _) =>
+                .Setup(x => x.PublishAsync(
+                    Topics.TokenIssued,
+                    It.IsAny<string>(),
+                    It.IsAny<TokenIssued>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<string, string, TokenIssued, CancellationToken>((topic, key, @event, _) =>
                 {
                     publishedTopic = topic;
+                    publishedKey = key;
                     publishedEvent = @event;
                 })
                 .Returns(Task.CompletedTask);
@@ -86,7 +87,8 @@ namespace TokenSerrvice.Application
                 .Returns(Task.CompletedTask);
 
             _vcSigningMock.Setup(x => x.GetIssuerDid()).Returns("did:example:issuer");
-            _vcSigningMock.Setup(x => x.CreateSignedVcJwt(It.IsAny<AgeOver18Credential>()))
+            _vcSigningMock
+                .Setup(x => x.CreateSignedVcJwt(It.IsAny<AgeOver18Credential>()))
                 .Returns("dummy-vc-jwt");
 
             var sut = CreateSut();
@@ -99,17 +101,17 @@ namespace TokenSerrvice.Application
             Assert.False(string.IsNullOrWhiteSpace(result.Token));
             Assert.True(result.ExpiresAt > result.IssuedAt);
 
-            // Assert – hash blev beregnet
+            // Hash beregnet
             _hashCalculatorMock.Verify(
                 x => x.ComputeHash(It.IsAny<string>()),
                 Times.Once);
 
-            // Assert – hash blev forankret i Fabric
+            // Hash forankret i Fabric
             _fabricMock.Verify(
                 x => x.AnchorHashAsync("dummy-hash", It.IsAny<CancellationToken>()),
                 Times.Once);
 
-            // Assert – attestation blev gemt
+            // Attestation gemt
             _attestationRepoMock.Verify(
                 x => x.SaveAsync(It.IsAny<AgeAttestation>(), It.IsAny<CancellationToken>()),
                 Times.Once);
@@ -119,9 +121,13 @@ namespace TokenSerrvice.Application
             Assert.True(savedAttestation.IsAdult);
             Assert.Equal("dummy-hash", savedAttestation.Hash);
 
-            // Assert – event blev sendt på korrekt topic
+            // Event sendt på korrekt topic med korrekt data
             _eventProducerMock.Verify(
-                x => x.PublishAsync(Topics.TokenIssued, It.IsAny<TokenIssued>(), It.IsAny<CancellationToken>()),
+                x => x.PublishAsync(
+                    Topics.TokenIssued,
+                    It.IsAny<string>(),
+                    It.IsAny<TokenIssued>(),
+                    It.IsAny<CancellationToken>()),
                 Times.Once);
 
             Assert.Equal(Topics.TokenIssued, publishedTopic);
@@ -138,7 +144,6 @@ namespace TokenSerrvice.Application
             var accountId = Guid.NewGuid();
             var dto = new IssueTokenDto { AccountId = accountId };
 
-            // Konto findes, men er IKKE voksen
             var ageStatus = new AccountAgeStatus(
                 accountId,
                 isAdult: false,
@@ -154,10 +159,9 @@ namespace TokenSerrvice.Application
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => sut.IssueTokenAsync(dto, CancellationToken.None));
 
-            // Assert – korrekt fejltekst (kan justeres hvis du ændrer teksten)
+            // Assert
             Assert.Equal("Account is not verified as 18+.", ex.Message);
 
-            // Ingen Fabric / repo / Kafka kaldes
             _fabricMock.Verify(
                 x => x.AnchorHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -167,9 +171,14 @@ namespace TokenSerrvice.Application
                 Times.Never);
 
             _eventProducerMock.Verify(
-                x => x.PublishAsync(Topics.TokenIssued, It.IsAny<TokenIssued>(), It.IsAny<CancellationToken>()),
+                x => x.PublishAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<TokenIssued>(),
+                    It.IsAny<CancellationToken>()),
                 Times.Never);
         }
+
         [Fact]
         public async Task IssueTokenAsync_WhenRepoFails_ThrowsException()
         {
@@ -178,10 +187,19 @@ namespace TokenSerrvice.Application
             var dto = new IssueTokenDto { AccountId = accountId };
 
             var ageStatus = new AccountAgeStatus(accountId, isAdult: true, verifiedAt: DateTime.UtcNow);
-            _ageStatusCacheMock.Setup(x => x.GetAsync(accountId, It.IsAny<CancellationToken>())).ReturnsAsync(ageStatus);
-            _hashCalculatorMock.Setup(x => x.ComputeHash(It.IsAny<string>())).Returns("dummy-hash");
+
+            _ageStatusCacheMock
+                .Setup(x => x.GetAsync(accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ageStatus);
+
+            _hashCalculatorMock
+                .Setup(x => x.ComputeHash(It.IsAny<string>()))
+                .Returns("dummy-hash");
+
             _vcSigningMock.Setup(x => x.GetIssuerDid()).Returns("did:example:issuer");
-            _vcSigningMock.Setup(x => x.CreateSignedVcJwt(It.IsAny<AgeOver18Credential>())).Returns("dummy-vc-jwt");
+            _vcSigningMock
+                .Setup(x => x.CreateSignedVcJwt(It.IsAny<AgeOver18Credential>()))
+                .Returns("dummy-vc-jwt");
 
             _attestationRepoMock
                 .Setup(x => x.SaveAsync(It.IsAny<AgeAttestation>(), It.IsAny<CancellationToken>()))
@@ -190,11 +208,18 @@ namespace TokenSerrvice.Application
             var sut = CreateSut();
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() => sut.IssueTokenAsync(dto, CancellationToken.None));
+            var ex = await Assert.ThrowsAsync<Exception>(
+                () => sut.IssueTokenAsync(dto, CancellationToken.None));
+
             Assert.Equal("Database failure", ex.Message);
 
-            // Verify Kafka was NOT called (transactional integrity)
-            _eventProducerMock.Verify(x => x.PublishAsync(It.IsAny<string>(), It.IsAny<TokenIssued>(), It.IsAny<CancellationToken>()), Times.Never);
+            _eventProducerMock.Verify(
+                x => x.PublishAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<TokenIssued>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         [Fact]
@@ -205,19 +230,38 @@ namespace TokenSerrvice.Application
             var dto = new IssueTokenDto { AccountId = accountId };
 
             var ageStatus = new AccountAgeStatus(accountId, isAdult: true, verifiedAt: DateTime.UtcNow);
-            _ageStatusCacheMock.Setup(x => x.GetAsync(accountId, It.IsAny<CancellationToken>())).ReturnsAsync(ageStatus);
-            _hashCalculatorMock.Setup(x => x.ComputeHash(It.IsAny<string>())).Returns("dummy-hash");
+
+            _ageStatusCacheMock
+                .Setup(x => x.GetAsync(accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ageStatus);
+
+            _hashCalculatorMock
+                .Setup(x => x.ComputeHash(It.IsAny<string>()))
+                .Returns("dummy-hash");
+
             _vcSigningMock.Setup(x => x.GetIssuerDid()).Returns("did:example:issuer");
-            _vcSigningMock.Setup(x => x.CreateSignedVcJwt(It.IsAny<AgeOver18Credential>())).Returns("dummy-vc-jwt");
+            _vcSigningMock
+                .Setup(x => x.CreateSignedVcJwt(It.IsAny<AgeOver18Credential>()))
+                .Returns("dummy-vc-jwt");
+
+            _attestationRepoMock
+                .Setup(x => x.SaveAsync(It.IsAny<AgeAttestation>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
 
             _eventProducerMock
-                .Setup(x => x.PublishAsync(It.IsAny<string>(), It.IsAny<TokenIssued>(), It.IsAny<CancellationToken>()))
+                .Setup(x => x.PublishAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<TokenIssued>(),
+                    It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Kafka failure"));
 
             var sut = CreateSut();
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() => sut.IssueTokenAsync(dto, CancellationToken.None));
+            var ex = await Assert.ThrowsAsync<Exception>(
+                () => sut.IssueTokenAsync(dto, CancellationToken.None));
+
             Assert.Equal("Kafka failure", ex.Message);
         }
     }

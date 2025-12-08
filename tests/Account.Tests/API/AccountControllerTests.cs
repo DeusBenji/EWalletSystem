@@ -269,15 +269,28 @@ namespace AccountSerrvicesTest.API
                 .Setup(s => s.GetAccountByIdAsync(id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(dto);
 
+            // Mapping til kun de felter AccountStatusResponse rent faktisk har
+            _mapperMock
+                .Setup(m => m.Map<AccountStatusResponse>(dto))
+                .Returns(new AccountStatusResponse
+                {
+                    IsAdult = true,
+                    IsMitIdLinked = false
+                });
+
             // Act
             var result = await _sut.GetStatus(id, CancellationToken.None);
 
             // Assert
             var ok = Assert.IsType<OkObjectResult>(result);
             var response = Assert.IsType<AccountStatusResponse>(ok.Value);
+
             Assert.True(response.IsAdult);
             Assert.False(response.IsMitIdLinked);
         }
+
+
+
 
         [Fact]
         public void Health_ReturnsOkWithStatus()
