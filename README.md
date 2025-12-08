@@ -17,9 +17,9 @@ Formålet er at demonstrere **off-chain alderverifikation** og **privacy-by-desi
 4. API’en svarer med:
    ```json
    {
+     "ID": "",
      "sub": "",
-     "ageOver18": true/false,
-     "displayName": ""
+     "isAdult": true/false,
    }
     
  5. Der bliver brugt.
