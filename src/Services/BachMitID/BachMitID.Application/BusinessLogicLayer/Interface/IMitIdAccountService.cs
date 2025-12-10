@@ -10,7 +10,7 @@ namespace BachMitID.Application.BusinessLogicLayer.Interface
 {
     public interface IMitIdAccountService
     {
-        Task<MitIdAccountDto?> CreateFromClaimsAsync(ClaimsPrincipal user);
+        Task<MitIdAccountResult?> CreateFromClaimsAsync(ClaimsPrincipal user);
         Task<MitIdAccountDto?> GetByAccountIdAsync(Guid accountId);
         Task<List<MitIdAccountDto>> GetAllAsync();
         Task<bool> UpdateAsync(Guid id, MitIdAccountDto dto);

@@ -5,7 +5,6 @@ using Application.Interfaces;
 using Application.Mapping;
 using Domain.Repositories;
 using Infrastructure.Caching;
-using Infrastructure.Kafka;
 using Infrastructure.Persistence;
 using Infrastructure.Security;
 using Confluent.Kafka;
@@ -13,6 +12,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using StackExchange.Redis;
+using BuildingBlocks.Kafka;
+using AccountService.API.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,20 +38,22 @@ builder.Services.AddSwaggerGen(c =>
 // Repositories (infra)
 builder.Services.AddSingleton<IAccountRepository, AccountRepository>();
 
-// Business logic / appl
+// Business logic / application services
 builder.Services.AddScoped<IAccountService, Application.BusinessLogic.AccountService>();
 
-// AutoMapper – loader alle profiler i samme assembly som AccountMappingProfile
-// AutoMapper – registrer både Application- og API-profiler
+// → Tilføj MitIdVerifiedService
+builder.Services.AddScoped<IMitIdVerifiedService, MitIdVerifiedService>();
+
+// AutoMapper profiler
 builder.Services.AddAutoMapper(cfg =>
 {
     cfg.AddProfile<AccountApplicationProfile>();
     cfg.AddProfile<AccountApiProfile>();
 });
+
 // Cross-cutting services
 builder.Services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaProducer, BuildingBlocks.Kafka.KafkaProducer>();
-builder.Services.AddSingleton<IKafkaProducer, AccountCreatedProducer>();
 builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaConsumer, BuildingBlocks.Kafka.KafkaConsumer>();
 
 // Redis connection
@@ -65,9 +68,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 // Cache
 builder.Services.AddSingleton<IAccountCache, AccountCache>();
 
-// Kafka consumer til MitIdVerified (BackgroundService)
-
-
+// Kafka Background Service → MitIdVerifiedConsumer
 builder.Services.AddHostedService<MitIdVerifiedConsumer>();
 
 // CORS (åben kun i Development)
@@ -101,4 +102,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-

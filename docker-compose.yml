@@ -43,7 +43,7 @@ services:
     depends_on:
       - kafka
 
-  # ==============
+  # ============== 
   # Infra: Redis
   # ==============
   redis:
@@ -52,6 +52,19 @@ services:
     ports:
       - "6379:6379"
     command: ["redis-server", "--appendonly", "yes"]
+
+  # ==============
+  # Infra: SQL Server
+  # ==============
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "YourStrong!Password"
+    ports:
+      - "1433:1433"
+    restart: unless-stopped
 
   # =====================
   # Go fabric resolver
@@ -84,11 +97,21 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_URLS: "http://+:8080"
-      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=AccountDb;User Id=sa;Password=YourStrong!Password;TrustServerCertificate=True;"
-      Kafka__BootstrapServers: "kafka:9092"
+
+      # DB (Docker)
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=AccountServiceDB;User Id=sa;Password=YourStrong!Password;TrustServerCertificate=True;"
+
+      # Redis (Docker)
+      ConnectionStrings__Redis: "redis:6379,abortConnect=false"
+
+      # Kafka (Docker)
+      Kafka__BootstrapServers: "kafka:29092"
+      Kafka__GroupId: "account-service-mitid"
     depends_on:
+      - sqlserver
       - fabric-resolver
       - kafka
+      - redis
 
   # =====================
   # Validation service
@@ -103,11 +126,21 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_URLS: "http://+:8080"
-      Kafka__BootstrapServers: "kafka:9092"
+
+      # DB (Docker)
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=ValidationServiceDB;User Id=sa;Password=YourStrong!Password;TrustServerCertificate=True;"
       ConnectionStrings__Redis: "redis:6379"
+
+      # Fabric
+      Fabric__BaseUrl: "http://fabric-resolver:8080"
+
+      # Kafka
+      Kafka__BootstrapServers: "kafka:29092"
     depends_on:
+      - sqlserver
       - kafka
       - redis
+      - fabric-resolver
 
   # =====================
   # Token service
@@ -122,9 +155,19 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_URLS: "http://+:8080"
-      Kafka__BootstrapServers: "kafka:9092"
+
+      # DB (Docker)
+      ConnectionStrings__TokenServiceConnection: "Server=sqlserver;Database=TokenServiceDB;User Id=sa;Password=YourStrong!Password;TrustServerCertificate=True;"
       ConnectionStrings__Redis: "redis:6379"
+
+      # Fabric (Docker)
+      Fabric__BaseUrl: "http://fabric-resolver:8080"
+
+      # Kafka
+      Kafka__BootstrapServers: "kafka:29092"
+      Kafka__GroupId: "token-service-mitid"
     depends_on:
+      - sqlserver
       - validation-service
       - account-service
       - kafka
@@ -144,17 +187,25 @@ services:
     environment:
       ASPNETCORE_URLS: "http://+:8080"
 
-      # Kafka should use docker broker
-      Kafka__BootstrapServers: "kafka:9092"
-
-      # Redis
+      # DB (Docker)
+      ConnectionStrings__CompanyConnection: "Server=sqlserver;Database=BachMitID;User Id=sa;Password=YourStrong!Password;TrustServerCertificate=True;"
       ConnectionStrings__RedisConnection: "redis:6379"
 
-      # ⭐ JWT settings – MUST MATCH ApiGateway 100%
+      # Kafka
+      Kafka__BootstrapServers: "kafka:29092"
+
+      # 🔐 Signicat / OIDC
+      Authentication__Authority: "https://bentest.sandbox.signicat.com/auth/open"
+      Authentication__ClientId: "sandbox-vast-knee-978"
+      Authentication__ClientSecret: "c26o448VVUR1nzjEPkY7YpnC4MLG1sPTcj9vrUEAf5Y67DyF"
+      Authentication__CallbackPath: "/signin-oidc"
+
+      # JWT (must match gateway)
       Jwt__Issuer: "ApiGateway"
       Jwt__Audience: "BachMitID"
       Jwt__Key: "DEV_SUPER_SECRET_KEY_1234567890_ABCD"
     depends_on:
+      - sqlserver
       - account-service
       - token-service
       - kafka
@@ -169,17 +220,17 @@ services:
       dockerfile: src/Gateway/ApiGateway/Dockerfile
     container_name: apigateway
     ports:
-      - "7005:8080"   # <- Gateway exposed here
+      - "7005:8080"
     restart: unless-stopped
     environment:
       ASPNETCORE_URLS: "http://+:8080"
 
-      # ⭐ JWT settings (must match BachMitID exactly)
+      # JWT settings (must match BachMitID)
       Jwt__Issuer: "ApiGateway"
       Jwt__Audience: "BachMitID"
       Jwt__Key: "DEV_SUPER_SECRET_KEY_1234567890_ABCD"
 
-      # ⭐ Override YARP so gateway hits the Docker container, NOT localhost
+      # Override YARP so gateway hits Docker container, not localhost
       ReverseProxy__Clusters__mitid-cluster__Destinations__mitid-api__Address: "http://bachmitid-api:8080/"
     depends_on:
       - bachmitid-api

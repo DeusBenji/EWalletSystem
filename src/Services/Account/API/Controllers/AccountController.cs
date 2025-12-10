@@ -1,8 +1,12 @@
-﻿using Application.DTOs;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+using AccountService.API.Contracts;
+using Application.DTOs;
 using Application.Interfaces;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
-using AccountService.API.Contracts;
+using Microsoft.Extensions.Logging;
 
 namespace AccountService.API.Controllers
 {
@@ -32,13 +36,10 @@ namespace AccountService.API.Controllers
 
             try
             {
-                // API -> Application DTO via AutoMapper
                 var dto = _mapper.Map<RegisterAccountDto>(request);
 
-                // Application → Application DTO result
                 var account = await _service.RegisterAccountAsync(dto, ct);
 
-                // Application DTO → API Contract via AutoMapper
                 var response = _mapper.Map<AccountResponse>(account);
 
                 return CreatedAtAction(nameof(GetById),
@@ -74,7 +75,6 @@ namespace AccountService.API.Controllers
             if (dto is null)
                 return NotFound();
 
-            // Application DTO -> API via AutoMapper
             var response = _mapper.Map<AccountResponse>(dto);
 
             return Ok(response);
@@ -88,7 +88,6 @@ namespace AccountService.API.Controllers
             if (dto is null)
                 return NotFound();
 
-            // Application DTO -> API via AutoMapper
             var response = _mapper.Map<AccountStatusResponse>(dto);
 
             return Ok(response);

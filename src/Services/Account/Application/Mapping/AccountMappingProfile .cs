@@ -10,7 +10,6 @@ namespace Application.Mapping
         {
             // Domain ↔ Application
             CreateMap<Account, AccountDto>().ReverseMap();
-            CreateMap<RegisterAccountDto, Account>(); // hvis du vil
         }
     }
 }

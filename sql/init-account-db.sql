@@ -3,33 +3,23 @@ BEGIN
     CREATE DATABASE AccountServiceDB;
 END
 GO
-
 USE AccountServiceDB;
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Accounts')
-BEGIN
-    CREATE TABLE Accounts (
-        Id UNIQUEIDENTIFIER PRIMARY KEY,
-        Email NVARCHAR(255) NOT NULL,
-        PasswordHash NVARCHAR(MAX) NULL,
-        MitIdSubId NVARCHAR(255) NULL,
-        IsAdult BIT NOT NULL DEFAULT 0,
-        IsMitIdLinked BIT NOT NULL DEFAULT 0,
-        CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-        IsActive BIT NOT NULL DEFAULT 1
-    );
-END
+DROP TABLE IF EXISTS dbo.Account;
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Accounts_Email' AND object_id = OBJECT_ID('Accounts'))
-BEGIN
-    CREATE UNIQUE INDEX IX_Accounts_Email ON Accounts (Email);
-END
-GO
+CREATE TABLE dbo.Account
+(
+    ID               UNIQUEIDENTIFIER NOT NULL,
+    Email            NVARCHAR(255)    NOT NULL,
+    PasswordHash     NVARCHAR(255)    NULL,
+    CreatedAt        DATETIME2        NOT NULL,
+    IsActive         BIT              NOT NULL,
+    IsMitIdVerified  BIT              NOT NULL DEFAULT 0,
+    IsAdult          BIT              NOT NULL DEFAULT 0,
 
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Accounts_MitIdSubId' AND object_id = OBJECT_ID('Accounts'))
-BEGIN
-    CREATE INDEX IX_Accounts_MitIdSubId ON Accounts (MitIdSubId) WHERE MitIdSubId IS NOT NULL;
-END
+    CONSTRAINT PK_Account PRIMARY KEY (ID),
+    CONSTRAINT UQ_Account_Email UNIQUE (Email)
+);
 GO

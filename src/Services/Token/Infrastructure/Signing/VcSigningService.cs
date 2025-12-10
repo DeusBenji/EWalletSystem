@@ -14,18 +14,18 @@ namespace TokenService.Infrastructure.Signing
     {
         private readonly string _issuerDid;
         private readonly RsaSecurityKey _privateKey;
-        
+
         public VcSigningService(IConfiguration config, IKeyProvider keyProvider)
         {
-            _issuerDid = config["VcSigning:IssuerDid"] 
+            _issuerDid = config["VcSigning:IssuerDid"]
                 ?? throw new InvalidOperationException("IssuerDid not configured");
             _privateKey = keyProvider.GetPrivateKey();
         }
-        
+
         public string CreateSignedVcJwt(AgeOver18Credential credential)
         {
             var now = DateTime.UtcNow;
-            
+
             // Build claims
             var claims = new List<Claim>
             {
@@ -36,10 +36,10 @@ namespace TokenService.Infrastructure.Signing
                 new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(now).ToUnixTimeSeconds().ToString()),
                 new Claim("vc", JsonSerializer.Serialize(credential))
             };
-            
+
             // Create signing credentials
             var signingCredentials = new SigningCredentials(_privateKey, SecurityAlgorithms.RsaSha256);
-            
+
             // Create token
             var token = new JwtSecurityToken(
                 issuer: _issuerDid,
@@ -48,11 +48,11 @@ namespace TokenService.Infrastructure.Signing
                 expires: credential.ExpirationDate,
                 signingCredentials: signingCredentials
             );
-            
+
             var handler = new JwtSecurityTokenHandler();
             return handler.WriteToken(token);
         }
-        
+
         public string GetIssuerDid() => _issuerDid;
     }
 }

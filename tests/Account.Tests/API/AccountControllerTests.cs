@@ -46,15 +46,6 @@ namespace AccountSerrvicesTest.API
                     Email = d.Email
                 });
 
-            // Application -> API (AccountDto -> AccountStatusResponse)
-            _mapperMock
-                .Setup(m => m.Map<AccountStatusResponse>(It.IsAny<AccountDto>()))
-                .Returns((AccountDto d) => new AccountStatusResponse
-                {
-                    IsAdult = d.IsAdult,
-                    IsMitIdLinked = d.IsMitIdLinked
-                });
-
             _sut = new AccountController(
                 _serviceMock.Object,
                 _loggerMock.Object,
@@ -87,8 +78,6 @@ namespace AccountSerrvicesTest.API
             {
                 Id = Guid.NewGuid(),
                 Email = request.Email,
-                IsAdult = false,
-                IsMitIdLinked = false
             };
 
             _serviceMock
@@ -232,9 +221,7 @@ namespace AccountSerrvicesTest.API
             var dto = new AccountDto
             {
                 Id = id,
-                Email = "test@example.com",
-                IsAdult = true,
-                IsMitIdLinked = true
+                Email = "test@example.com"
             };
 
             _serviceMock
@@ -275,14 +262,21 @@ namespace AccountSerrvicesTest.API
             var dto = new AccountDto
             {
                 Id = id,
-                Email = "test@example.com",
-                IsAdult = true,
-                IsMitIdLinked = false
+                Email = "test@example.com"
             };
 
             _serviceMock
                 .Setup(s => s.GetAccountByIdAsync(id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(dto);
+
+            // Mapping til kun de felter AccountStatusResponse rent faktisk har
+            _mapperMock
+                .Setup(m => m.Map<AccountStatusResponse>(dto))
+                .Returns(new AccountStatusResponse
+                {
+                    IsAdult = true,
+                    IsMitIdLinked = false
+                });
 
             // Act
             var result = await _sut.GetStatus(id, CancellationToken.None);
@@ -290,9 +284,13 @@ namespace AccountSerrvicesTest.API
             // Assert
             var ok = Assert.IsType<OkObjectResult>(result);
             var response = Assert.IsType<AccountStatusResponse>(ok.Value);
+
             Assert.True(response.IsAdult);
             Assert.False(response.IsMitIdLinked);
         }
+
+
+
 
         [Fact]
         public void Health_ReturnsOkWithStatus()

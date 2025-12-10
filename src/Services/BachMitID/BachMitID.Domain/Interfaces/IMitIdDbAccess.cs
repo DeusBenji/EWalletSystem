@@ -9,6 +9,7 @@ namespace BachMitID.Domain.Interfaces
        Task<List<MitID_Account>> GetAllMitIdAccounts();
        Task<bool> UpdateMitIdAccount(MitID_Account mAcc);
        Task<bool> DeleteMitIdAccount(Guid id);
+       Task<MitID_Account?> GetMitIdAccountBySubId(string hashedSubId);
 
     }
 }

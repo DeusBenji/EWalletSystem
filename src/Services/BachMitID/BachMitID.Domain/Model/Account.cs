@@ -11,7 +11,7 @@ namespace BachMitID.Domain.Model
     {
         public Guid ID { get; set; }
         public string Email { get; set; }
-        public string Password { get; set; }
+        public string Password { get; set; } = null!;
 
         //Empty constructor
         public Account(){}

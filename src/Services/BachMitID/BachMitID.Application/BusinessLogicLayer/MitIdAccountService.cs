@@ -13,7 +13,7 @@ namespace BachMitID.Application.BusinessLogicLayer
         private readonly IMitIdDbAccess _mitIdDbAccess;
         private readonly IMapper _mapper;
         private readonly IMitIdAccountCache _cache;
-         
+
         public MitIdAccountService(
             IMitIdDbAccess mitIdDbAccess,
             IMapper mapper,
@@ -25,7 +25,7 @@ namespace BachMitID.Application.BusinessLogicLayer
         }
 
         // -------- CREATE FROM CLAIMS (MitID login) --------
-        public async Task<MitIdAccountDto?> CreateFromClaimsAsync(ClaimsPrincipal user)
+        public async Task<MitIdAccountResult?> CreateFromClaimsAsync(ClaimsPrincipal user)
         {
             // 1) Find sub (unik MitID-id)
             var sub = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -53,7 +53,23 @@ namespace BachMitID.Application.BusinessLogicLayer
             // Hash sub før vi gemmer
             var hashedSub = SubIdHasher.Hash(sub);
 
-            // 4) Lav DTO
+            // 3b) Tjek om der allerede findes en MitID-account med samme hashed SubId
+            var existingEntity = await _mitIdDbAccess.GetMitIdAccountBySubId(hashedSub);
+            if (existingEntity != null)
+            {
+                var existingDto = _mapper.Map<MitIdAccountDto>(existingEntity);
+
+                // læg i cache (så efterfølgende opslag via AccountId kan være hurtige)
+                await _cache.SetAsync(existingDto, TimeSpan.FromMinutes(30));
+
+                return new MitIdAccountResult
+                {
+                    Account = existingDto,
+                    IsNew = false
+                };
+            }
+
+            // 4) Lav DTO for ny account
             var dto = new MitIdAccountDto
             {
                 Id = Guid.NewGuid(),   // bliver overskrevet efter DB-kald
@@ -68,13 +84,17 @@ namespace BachMitID.Application.BusinessLogicLayer
             // 6) Gem i DB
             var newId = await _mitIdDbAccess.CreateMitIdAccount(entity);
 
-            // brug ID'et vi fik (løsning A)
+            // brug ID'et vi fik
             dto.Id = newId;
 
             // 7) Læg i cache
             await _cache.SetAsync(dto, TimeSpan.FromMinutes(30));
 
-            return dto;
+            return new MitIdAccountResult
+            {
+                Account = dto,
+                IsNew = true
+            };
         }
 
         // -------- READ --------

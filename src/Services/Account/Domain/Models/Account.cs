@@ -1,27 +1,18 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Domain.Models
 {
-    /// <summary>
-    /// Represents a user account in the system.
-    /// This is a Domain Entity that encapsulates core business logic and state.
-    /// </summary>
     public class Account
     {
         public Guid Id { get; private set; }
         public string Email { get; private set; } = default!;
         public string? PasswordHash { get; private set; }
 
-        public string? MitIdSubId { get; private set; }
-        public bool IsAdult { get; private set; }
-        public bool IsMitIdLinked { get; private set; }
-
         public DateTime CreatedAt { get; private set; }
         public bool IsActive { get; private set; }
+
+        public bool IsMitIdVerified { get; private set; }
+        public bool IsAdult { get; private set; }
 
         private Account() { }
 
@@ -32,6 +23,9 @@ namespace Domain.Models
             PasswordHash = passwordHash;
             CreatedAt = DateTime.UtcNow;
             IsActive = true;
+
+            IsMitIdVerified = false;
+            IsAdult = false;
         }
 
         public void Deactivate()
@@ -44,34 +38,31 @@ namespace Domain.Models
             PasswordHash = newPasswordHash ?? throw new ArgumentNullException(nameof(newPasswordHash));
         }
 
-        public void ApplyMitIdVerification(string mitIdSubId, bool isAdult)
+        public void MarkMitIdVerified(bool isAdult)
         {
-            MitIdSubId = mitIdSubId;
+            IsMitIdVerified = true;
             IsAdult = isAdult;
-            IsMitIdLinked = true;
         }
+
         public static Account Reconstruct(
             Guid id,
             string email,
             string? passwordHash,
-            string? mitIdSubId = null,
-            bool isAdult = false,
-            bool isMitIdLinked = false,
             DateTime? createdAt = null,
-            bool isActive = true)
+            bool isActive = true,
+            bool isMitIdVerified = false,
+            bool isAdult = false)
         {
             return new Account
             {
                 Id = id,
                 Email = email,
                 PasswordHash = passwordHash,
-                MitIdSubId = mitIdSubId,
-                IsAdult = isAdult,
-                IsMitIdLinked = isMitIdLinked,
                 CreatedAt = createdAt ?? DateTime.UtcNow,
-                IsActive = isActive
+                IsActive = isActive,
+                IsMitIdVerified = isMitIdVerified,
+                IsAdult = isAdult
             };
         }
     }
 }
-

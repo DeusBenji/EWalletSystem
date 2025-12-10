@@ -5,7 +5,11 @@ using BachMitID.Application.BusinessLogicLayer.Interface;
 using BachMitID.Domain.Interfaces;
 using BachMitID.Infrastructure.Cache;
 using BachMitID.Infrastructure.Databaselayer;
-using BachMitID.Infrastructure.Kafka;
+
+using BuildingBlocks.Contracts.Messaging;
+using BuildingBlocks.Kafka;
+using BachMitID.BackgroundServices;
+
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -17,7 +21,6 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using StackExchange.Redis;
 using System.Text;
-using static BachMitID.Infrastructure.Kafka.MitIdAccountEventPublisher;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,15 +58,22 @@ if (string.IsNullOrWhiteSpace(jwtKey))
     throw new InvalidOperationException("Jwt:Key is missing in configuration.");
 }
 
+// Redis
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     ConnectionMultiplexer.Connect(redisConn));
 
+// Database + services
 builder.Services.AddScoped<IAccDbAccess, AccountDatabaseAccess>();
 builder.Services.AddScoped<IMitIdDbAccess, MitIdAccountDatabaseAccess>();
 builder.Services.AddScoped<IMitIdAccountService, MitIdAccountService>();
-builder.Services.AddScoped<IMitIdAccountEventPublisher, MitIdAccountEventPublisher>();
+
+// Account sync service (til consumer)
+builder.Services.AddScoped<IAccountSyncService, AccountSyncService>();
+
+// Cache
 builder.Services.AddSingleton<IMitIdAccountCache, MitIdAccountCache>();
 
+// AutoMapper
 builder.Services.AddSingleton<IMapper>(sp =>
 {
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
@@ -75,6 +85,13 @@ builder.Services.AddSingleton<IMapper>(sp =>
 
     return config.CreateMapper();
 });
+
+// 🔥 KAFKA — BuildingBlocks
+builder.Services.AddSingleton<IKafkaProducer, KafkaProducer>();
+builder.Services.AddSingleton<IKafkaConsumer, KafkaConsumer>();
+
+// 🧵 Background Kafka consumer(s)
+builder.Services.AddHostedService<AccountCreatedConsumer>();
 
 // 🔐 Authentication: Cookies + OIDC + JWT Bearer (fra gateway)
 builder.Services
@@ -108,7 +125,6 @@ builder.Services
     // 🔽 JWT Bearer til interne kald fra ApiGateway
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
     {
-        // Midlertidigt: kun tjek signaturen, IKKE issuer/audience/lifetime
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
@@ -120,7 +136,6 @@ builder.Services
             ValidateLifetime = false
         };
 
-        // 🧾 LOG: Se om headeren overhovedet kommer ind
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -134,10 +149,11 @@ builder.Services
                 Console.WriteLine($"[BachMitID][JWT] Authentication failed: {context.Exception.Message}");
                 return Task.CompletedTask;
             },
-            // 🚫 Forhindrer redirect til OIDC på API-kald og returnerer ren 401 JSON
+            // 🚫 Forhindrer redirect til OIDC på API-kald (returnerer ren 401 JSON)
             OnChallenge = context =>
             {
-                context.HandleResponse(); // undertryk default redirect-logic
+                context.HandleResponse();
+
                 if (!context.Response.HasStarted)
                 {
                     context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -161,11 +177,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "BachMitID API v1");
-        // options.RoutePrefix = string.Empty;
     });
 }
-
-// ❌ app.UseHttpsRedirection();  // fjernet: gateway snakker HTTP til os
 
 app.UseAuthentication();
 app.UseAuthorization();

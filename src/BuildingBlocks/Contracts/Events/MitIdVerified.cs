@@ -9,7 +9,6 @@ namespace BuildingBlocks.Contracts.Events
 {
     public record MitIdVerified(
         Guid AccountId,
-        string MitIdSubId,
         bool IsAdult,
         DateTime VerifiedAt
 );
