@@ -1,13 +1,14 @@
 ﻿using System;
-using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Application.DTOs;
 using Application.Interfaces;
-using ValidationService.Application.Interfaces;
-using Microsoft.Extensions.Logging;
+using BuildingBlocks.Contracts.Events;
+using BuildingBlocks.Contracts.Messaging;
 using Domain.Models;
 using Domain.Repositories;
+using Microsoft.Extensions.Logging;
+using ValidationService.Application.Interfaces;
 
 namespace Application.BusinessLogic
 {
@@ -16,7 +17,9 @@ namespace Application.BusinessLogic
         private readonly IFabricLookupClient _fabricLookupClient;
         private readonly ICacheService _cache;
         private readonly IVerificationLogRepository _logRepository;
-        private readonly IKafkaEventProducer _kafkaProducer;
+
+        private readonly IKafkaProducer _kafkaProducer;
+
         private readonly ICredentialFingerprintService _fingerprint;
         private readonly ICredentialClaimParser _claimParser;
         private readonly ILogger<CredentialValidationService> _logger;
@@ -26,7 +29,7 @@ namespace Application.BusinessLogic
             IFabricLookupClient fabricLookupClient,
             ICacheService cache,
             IVerificationLogRepository logRepository,
-            IKafkaEventProducer kafkaProducer,
+            IKafkaProducer kafkaProducer,
             ICredentialFingerprintService fingerprint,
             ICredentialClaimParser claimParser,
             ILogger<CredentialValidationService> logger,
@@ -48,10 +51,11 @@ namespace Application.BusinessLogic
                 throw new ArgumentException("VC JWT must be provided", nameof(request.VcJwt));
 
             var now = DateTime.UtcNow;
-            // Validate JWT signature and claims
-            var (isValid, token, error) = await _jwtValidator.ValidateAsync(request.VcJwt, default);
 
-            if (!isValid || token == null)
+            // 1) Validate JWT signature and claims
+            var (isJwtValid, token, error) = await _jwtValidator.ValidateAsync(request.VcJwt, default);
+
+            if (!isJwtValid || token == null)
             {
                 _logger.LogWarning("JWT validation failed: {Error}", error);
 
@@ -63,11 +67,11 @@ namespace Application.BusinessLogic
                     IssuerDid = null
                 };
 
-                await LogAndMaybePublishAsync(request.VcJwt, failResult, null);
+                await LogAndMaybePublishAsync(request.VcJwt, failResult, accountId: null);
                 return failResult;
             }
 
-            // Extract and validate VC claim
+            // 2) Extract and validate VC claim
             if (!token.Payload.TryGetValue("vc", out var vcClaim))
             {
                 var noVcResult = new VerifyCredentialResultDto
@@ -78,11 +82,11 @@ namespace Application.BusinessLogic
                     IssuerDid = token.Issuer
                 };
 
-                await LogAndMaybePublishAsync(request.VcJwt, noVcResult, null);
+                await LogAndMaybePublishAsync(request.VcJwt, noVcResult, accountId: null);
                 return noVcResult;
             }
 
-            // Parse VC content
+            // 3) Parse VC content
             var vcJson = vcClaim.ToString();
             AgeOver18Credential? credential;
 
@@ -102,11 +106,11 @@ namespace Application.BusinessLogic
                     IssuerDid = token.Issuer
                 };
 
-                await LogAndMaybePublishAsync(request.VcJwt, parseFailResult, null);
+                await LogAndMaybePublishAsync(request.VcJwt, parseFailResult, accountId: null);
                 return parseFailResult;
             }
 
-            // Validate VC content
+            // 4) Validate VC content
             if (credential == null || !credential.Type.Contains("AgeOver18Credential"))
             {
                 var wrongTypeResult = new VerifyCredentialResultDto
@@ -117,7 +121,7 @@ namespace Application.BusinessLogic
                     IssuerDid = token.Issuer
                 };
 
-                await LogAndMaybePublishAsync(request.VcJwt, wrongTypeResult, null);
+                await LogAndMaybePublishAsync(request.VcJwt, wrongTypeResult, accountId: null);
                 return wrongTypeResult;
             }
 
@@ -131,11 +135,11 @@ namespace Application.BusinessLogic
                     IssuerDid = token.Issuer
                 };
 
-                await LogAndMaybePublishAsync(request.VcJwt, notAdultResult, null);
+                await LogAndMaybePublishAsync(request.VcJwt, notAdultResult, accountId: null);
                 return notAdultResult;
             }
 
-            // All checks passed
+            // 5) All checks passed
             var successResult = new VerifyCredentialResultDto
             {
                 IsValid = true,
@@ -155,7 +159,7 @@ namespace Application.BusinessLogic
             VerifyCredentialResultDto result,
             Guid? accountId)
         {
-            // 1) Hash VC for logformål
+            // 1) Log (altid)
             var hash = _fingerprint.Hash(vcJwt);
 
             var log = new VerificationLog(
@@ -167,28 +171,32 @@ namespace Application.BusinessLogic
 
             await _logRepository.InsertAsync(log);
 
-            // 2) Publish event til Kafka (generisk JSON payload)
-            if (accountId is null)
+            // 2) Publish kun når GODKENDT
+            if (!result.IsValid)
             {
-                _logger.LogInformation(
-                    "Skipping Kafka event for credential verification because AccountId could not be determined.");
+                _logger.LogInformation("Credential verify rejected; skipping Kafka publish (by design).");
                 return;
             }
 
-            var payload = new
+            if (accountId is null)
             {
-                AccountId = accountId.Value,
-                result.IsValid,
-                result.VerifiedAt,
-                result.FailureReason
-            };
+                _logger.LogInformation("Skipping Kafka publish because AccountId could not be determined.");
+                return;
+            }
 
-            var value = JsonSerializer.Serialize(payload);
-            var key = accountId.Value.ToString();
+            var evt = new CredentialVerified(
+                AccountId: accountId.Value,
+                IsValid: true,
+                IssuerDid: result.IssuerDid,
+                FailureReason: null,
+                VerifiedAt: result.VerifiedAt
+            );
 
-            const string topic = "credential-verified";
-
-            await _kafkaProducer.PublishAsync(topic, key, value);
+            await _kafkaProducer.PublishAsync(
+                Topics.CredentialVerified,
+                accountId.Value.ToString(),
+                evt
+            );
         }
     }
 }

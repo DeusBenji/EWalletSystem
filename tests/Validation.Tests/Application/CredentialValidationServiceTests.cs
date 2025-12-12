@@ -12,6 +12,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Application.DTOs;
 using Xunit;
+using BuildingBlocks.Contracts.Messaging;
 
 namespace ValidationenTest.Application
 {
@@ -20,7 +21,7 @@ namespace ValidationenTest.Application
         private readonly Mock<IFabricLookupClient> _fabric;
         private readonly Mock<ICacheService> _cache;
         private readonly Mock<IVerificationLogRepository> _logRepo;
-        private readonly Mock<IKafkaEventProducer> _kafka;
+        private readonly Mock<IKafkaProducer> _kafka;
         private readonly Mock<ICredentialFingerprintService> _fingerprint;
         private readonly Mock<ICredentialClaimParser> _claimParser;
         private readonly Mock<ILogger<CredentialValidationService>> _logger;
@@ -33,7 +34,7 @@ namespace ValidationenTest.Application
             _fabric = new Mock<IFabricLookupClient>();
             _cache = new Mock<ICacheService>();
             _logRepo = new Mock<IVerificationLogRepository>();
-            _kafka = new Mock<IKafkaEventProducer>();
+            _kafka = new Mock<IKafkaProducer>();
             _fingerprint = new Mock<ICredentialFingerprintService>();
             _claimParser = new Mock<ICredentialClaimParser>();
             _logger = new Mock<ILogger<CredentialValidationService>>();

@@ -13,5 +13,6 @@ namespace BuildingBlocks.Contracts.Messaging
         public const string TokenIssued = "token-issued";
         public const string CredentialValidated = "credential-validated";
         public const string ValidationFailed = "validation-failed";
+        public const string CredentialVerified = "credential-verified";
     }
 }

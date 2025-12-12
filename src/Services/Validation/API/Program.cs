@@ -6,7 +6,6 @@ using Domain.Repositories;
 using Infrastructure.Blockchain;
 using Infrastructure.Caching;
 using Infrastructure.Jwt;
-using Infrastructure.Kafka;
 using Infrastructure.Persistence;
 using Infrastructure.Security;
 using ValidationService.Application.Interfaces;
@@ -21,7 +20,6 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    // Hvis du vil have XML-kommentarer med:
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
     if (File.Exists(xmlPath))
@@ -85,10 +83,9 @@ builder.Services.AddHttpClient<IFabricLookupClient, FabricLookupClient>((service
 });
 
 // -------------------------------------------------------
-// Infrastructure – Kafka producer
+// Kafka producer (BuildingBlocks ONLY)
 // -------------------------------------------------------
 builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaProducer, BuildingBlocks.Kafka.KafkaProducer>();
-builder.Services.AddSingleton<IKafkaEventProducer, KafkaEventProducer>();
 
 // -------------------------------------------------------
 // Infrastructure – VC Validation
@@ -107,7 +104,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "ValidationService API v1");
-        options.RoutePrefix = string.Empty; // swagger på roden
+        options.RoutePrefix = string.Empty;
     });
 }
 
@@ -116,4 +113,3 @@ app.UseHttpsRedirection();
 app.MapControllers();
 
 app.Run();
-
