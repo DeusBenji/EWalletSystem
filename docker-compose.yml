@@ -43,7 +43,7 @@ services:
     depends_on:
       - kafka
 
-  # ============== 
+  # ==============
   # Infra: Redis
   # ==============
   redis:
@@ -107,6 +107,11 @@ services:
       # Kafka (Docker)
       Kafka__BootstrapServers: "kafka:29092"
       Kafka__GroupId: "account-service-mitid"
+
+      # JWT (Docker)  # ADDED
+      Jwt__Issuer: "ApiGateway"
+      Jwt__Audience: "AccountService"
+      Jwt__Key: "DEV_SUPER_SECRET_KEY_1234567890_ABCD"
     depends_on:
       - sqlserver
       - fabric-resolver
@@ -136,6 +141,11 @@ services:
 
       # Kafka
       Kafka__BootstrapServers: "kafka:29092"
+
+      # JWT (Docker)  # ADDED
+      Jwt__Issuer: "ApiGateway"
+      Jwt__Audience: "ValidationService"
+      Jwt__Key: "DEV_SUPER_SECRET_KEY_1234567890_ABCD"
     depends_on:
       - sqlserver
       - kafka
@@ -166,6 +176,11 @@ services:
       # Kafka
       Kafka__BootstrapServers: "kafka:29092"
       Kafka__GroupId: "token-service-mitid"
+
+      # JWT (Docker)  # ADDED
+      Jwt__Issuer: "ApiGateway"
+      Jwt__Audience: "TokenService"
+      Jwt__Key: "DEV_SUPER_SECRET_KEY_1234567890_ABCD"
     depends_on:
       - sqlserver
       - validation-service
@@ -230,10 +245,17 @@ services:
       Jwt__Audience: "BachMitID"
       Jwt__Key: "DEV_SUPER_SECRET_KEY_1234567890_ABCD"
 
-      # Override YARP so gateway hits Docker container, not localhost
+      # 🔥 YARP overrides (Docker-netværk)
       ReverseProxy__Clusters__mitid-cluster__Destinations__mitid-api__Address: "http://bachmitid-api:8080/"
+      ReverseProxy__Clusters__account-cluster__Destinations__account-api__Address: "http://account-service:8080/"
+      ReverseProxy__Clusters__validation-cluster__Destinations__validation-api__Address: "http://validation-service:8080/"
+      ReverseProxy__Clusters__token-cluster__Destinations__token-api__Address: "http://token-service:8080/"
+
     depends_on:
       - bachmitid-api
+      - account-service
+      - validation-service
+      - token-service
 
 networks:
   default:

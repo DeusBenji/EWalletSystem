@@ -40,27 +40,58 @@ app.UseHttpsRedirection();
 app.UseCors("AllowWallet");
 
 //
-// 🔥 YARP middleware der automatisk tilføjer JWT fra gateway til MitID-service
+// 🔥 YARP middleware der automatisk tilføjer JWT fra gateway til interne services
 //
 app.MapReverseProxy(proxyPipeline =>
 {
     proxyPipeline.Use(async (context, next) =>
     {
-        // Gælder kun for ruten /mitid/**
-        var path = context.Request.Path.Value?.ToLower();
+        var path = context.Request.Path.Value?.ToLowerInvariant();
 
-        if (path != null && path.StartsWith("/mitid"))
+        if (!string.IsNullOrWhiteSpace(path))
         {
             var tokenService = context.RequestServices.GetRequiredService<IJwtTokenService>();
 
-            // Lav token rettet mod BachMitID
-            string jwt = tokenService.CreateServiceToken(
-                audience: "BachMitID",
-                scope: "mitid.read"
-            );
+            // MitID
+            if (path.StartsWith("/mitid"))
+            {
+                string jwt = tokenService.CreateServiceToken(
+                    audience: "BachMitID",
+                    scope: "mitid.read"
+                );
 
-            // Sæt Authorization-header for intern servicekommunikation
-            context.Request.Headers["Authorization"] = $"Bearer {jwt}";
+                context.Request.Headers["Authorization"] = $"Bearer {jwt}";
+            }
+            // Account
+            else if (path.StartsWith("/account"))
+            {
+                string jwt = tokenService.CreateServiceToken(
+                    audience: "AccountService",
+                    scope: "account.read"
+                );
+
+                context.Request.Headers["Authorization"] = $"Bearer {jwt}";
+            }
+            // Token
+            else if (path.StartsWith("/token"))
+            {
+                string jwt = tokenService.CreateServiceToken(
+                    audience: "TokenService",
+                    scope: "token.issue"
+                );
+
+                context.Request.Headers["Authorization"] = $"Bearer {jwt}";
+            }
+            // Validation
+            else if (path.StartsWith("/validation"))
+            {
+                string jwt = tokenService.CreateServiceToken(
+                    audience: "ValidationService",
+                    scope: "validation.verify"
+                );
+
+                context.Request.Headers["Authorization"] = $"Bearer {jwt}";
+            }
         }
 
         await next();
