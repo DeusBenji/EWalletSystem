@@ -5,6 +5,7 @@ using AccountService.API.Contracts;
 using Application.DTOs;
 using Application.Interfaces;
 using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -12,6 +13,7 @@ namespace AccountService.API.Controllers
 {
     [ApiController]
     [Route("api/accounts")]
+    [Authorize]
     public class AccountController : ControllerBase
     {
         private readonly IAccountService _service;
@@ -28,6 +30,8 @@ namespace AccountService.API.Controllers
             _mapper = mapper;
         }
 
+        // Public: man skal kunne oprette konto uden at være logget ind
+        [AllowAnonymous]
         [HttpPost]
         public async Task<IActionResult> Register([FromBody] AccountRegisterRequest request, CancellationToken ct)
         {
@@ -53,6 +57,8 @@ namespace AccountService.API.Controllers
             }
         }
 
+        // Public: login uden token
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] AccountLoginRequest request, CancellationToken ct)
         {
@@ -66,7 +72,7 @@ namespace AccountService.API.Controllers
 
             return Ok(new { result.AccountId });
         }
-
+        [Authorize]
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
         {
@@ -79,7 +85,7 @@ namespace AccountService.API.Controllers
 
             return Ok(response);
         }
-
+        [Authorize]
         [HttpGet("{id:guid}/status")]
         public async Task<IActionResult> GetStatus(Guid id, CancellationToken ct)
         {
@@ -93,6 +99,8 @@ namespace AccountService.API.Controllers
             return Ok(response);
         }
 
+        // Public health endpoint (også nice til docker healthchecks)
+        [AllowAnonymous]
         [HttpGet("health")]
         public IActionResult Health()
         {

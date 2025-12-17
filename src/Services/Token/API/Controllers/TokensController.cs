@@ -1,17 +1,15 @@
 ﻿using Api.Contracts;
 using AutoMapper;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Runtime.InteropServices;
-using Application.BusinessLogic;
 using Application.DTOs;
 using Application.Interfaces;
-using Application.Mapping;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers
 {
     [ApiController]
     [Route("api/tokens")]
+    [Authorize]
     public class TokensController : ControllerBase
     {
         private readonly ITokenIssuanceService _tokenService;
@@ -34,6 +32,18 @@ namespace Api.Controllers
             var response = _mapper.Map<IssueTokenResponseContract>(result);
 
             return Ok(response);
+        }
+
+        [AllowAnonymous]
+        [HttpGet("health")]
+        public IActionResult Health()
+        {
+            return Ok(new
+            {
+                status = "healthy",
+                service = "token-service",
+                timestamp = DateTime.UtcNow
+            });
         }
     }
 }

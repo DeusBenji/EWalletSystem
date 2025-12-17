@@ -19,8 +19,9 @@ namespace Infrastructure.Persistence
             IConfiguration configuration,
             ILogger<VerificationLogRepository> logger)
         {
-            _connectionString = configuration.GetConnectionString("ValidationDatabase")
-                ?? throw new InvalidOperationException("Connection string 'ValidationDatabase' not found");
+            _connectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException(
+                    "Connection string 'DefaultConnection' not found");
 
             _logger = logger;
         }
@@ -29,7 +30,7 @@ namespace Infrastructure.Persistence
         {
             try
             {
-                _logger.LogInformation("Creating SQL connection for ValidationDatabase...");
+                _logger.LogInformation("Creating SQL connection for ValidationService...");
                 return new SqlConnection(_connectionString);
             }
             catch (Exception ex)
@@ -59,7 +60,7 @@ VALUES (
 
             using var connection = CreateConnection();
 
-            await connection.OpenAsync(ct); // bruger stadig ct her
+            await connection.OpenAsync(ct);
 
             var command = new CommandDefinition(
                 sql,

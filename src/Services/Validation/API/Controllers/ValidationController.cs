@@ -3,11 +3,13 @@ using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Application.DTOs;
 using Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class ValidationController : ControllerBase
     {
         private readonly ICredentialValidationService _service;
@@ -45,12 +47,22 @@ namespace Api.Controllers
 
             var response = _mapper.Map<VerifyCredentialResponse>(result);
 
-            // Brug DTO'ens IsValid til statuskode
             if (!result.IsValid)
                 return BadRequest(response);
 
             return Ok(response);
         }
 
+        [AllowAnonymous]
+        [HttpGet("health")]
+        public IActionResult Health()
+        {
+            return Ok(new
+            {
+                status = "healthy",
+                service = "validation-service",
+                timestamp = DateTime.UtcNow
+            });
+        }
     }
 }

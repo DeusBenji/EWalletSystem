@@ -1,19 +1,18 @@
-﻿using AccountService.API.Mapping;
-using AutoMapper;
+﻿using AccountService.API.BackgroundServices;
+using AccountService.API.Mapping;
 using Application.BusinessLogic;
 using Application.Interfaces;
 using Application.Mapping;
+using BuildingBlocks.Kafka;
 using Domain.Repositories;
 using Infrastructure.Caching;
 using Infrastructure.Persistence;
 using Infrastructure.Security;
-using Confluent.Kafka;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
-using BuildingBlocks.Kafka;
-using AccountService.API.BackgroundServices;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +31,36 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "Account Service API", Version = "v1" });
 });
+
+// ----------------- AUTH (JWT Bearer) -----------------
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var issuer = builder.Configuration["Jwt:Issuer"];
+        var audience = builder.Configuration["Jwt:Audience"];
+        var key = builder.Configuration["Jwt:Key"];
+
+        if (string.IsNullOrWhiteSpace(key))
+            throw new InvalidOperationException("Jwt:Key is missing (check appsettings / env vars).");
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = issuer,
+
+            ValidateAudience = true,
+            ValidAudience = audience,
+
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 // ---------- Dependency Injection ----------
 
@@ -97,6 +126,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// 🔐 auth middleware order matters
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
