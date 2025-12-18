@@ -258,6 +258,20 @@ services:
       - validation-service
       - token-service
 
+  # =====================
+  # Prometheus
+  # =====================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    restart: unless-stopped
+
 networks:
   default:
     name: bachelor-net

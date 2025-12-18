@@ -21,11 +21,13 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using StackExchange.Redis;
 using System.Text;
+using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
+// Swagger / OpenAPI
 // Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -37,6 +39,14 @@ builder.Services.AddSwaggerGen(options =>
         Description = "API til MitID-integration"
     });
 });
+
+// Metrics
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics =>
+    {
+        metrics.AddPrometheusExporter();
+        metrics.AddMeter("Microsoft.AspNetCore.Hosting", "Microsoft.AspNetCore.Server.Kestrel");
+    });
 
 var redisConn = builder.Configuration.GetConnectionString("RedisConnection")
     ?? throw new InvalidOperationException("RedisConnection is missing from appsettings.json");
@@ -182,6 +192,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapPrometheusScrapingEndpoint();
 
 app.MapControllers();
 

@@ -14,6 +14,7 @@ using System.Reflection;
 using System.Text;
 using ValidationService.Application.Interfaces;
 using ValidationService.Infrastructure.Jwt;
+using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +22,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Basic ASP.NET setup
 // -------------------------------------------------------
 builder.Services.AddControllers();
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -31,6 +33,14 @@ builder.Services.AddSwaggerGen(options =>
         options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
     }
 });
+
+// Metrics
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics =>
+    {
+        metrics.AddPrometheusExporter();
+        metrics.AddMeter("Microsoft.AspNetCore.Hosting", "Microsoft.AspNetCore.Server.Kestrel");
+    });
 
 // -------------------------------------------------------
 // AUTH (JWT Bearer)
@@ -173,6 +183,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapPrometheusScrapingEndpoint();
 
 app.MapControllers();
 

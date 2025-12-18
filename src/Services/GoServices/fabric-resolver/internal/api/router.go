@@ -10,6 +10,7 @@ import (
 	"fabric-resolver/internal/infrastructure/fabric"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // NewRouter creates and configures the HTTP router
@@ -36,6 +37,9 @@ func NewRouter(fabricClient fabric.FabricClient) *mux.Router {
 	didHandler := handlers.NewDidHandler(fabricClient)
 	r.HandleFunc("/dids", didHandler.CreateDid).Methods("POST")
 	r.HandleFunc("/dids/{did:.*}", didHandler.ResolveDid).Methods("GET")
+
+	// Metrics
+	r.Handle("/metrics", promhttp.Handler()).Methods("GET")
 
 	return r
 }
