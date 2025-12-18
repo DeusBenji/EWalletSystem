@@ -68,6 +68,13 @@ namespace BuildingBlocks.Kafka
                     catch (ConsumeException ex)
                     {
                         _logger.LogError(ex, "Error consuming from {Topic}", topic);
+                        // Wait briefly to avoid tight loop on persistent errors
+                        await Task.Delay(1000, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Unexpected error consuming from {Topic}", topic);
+                        await Task.Delay(5000, ct);
                     }
                 }
             }

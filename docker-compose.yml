@@ -201,6 +201,7 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_URLS: "http://+:8080"
+      ASPNETCORE_ENVIRONMENT: "Development"
 
       # DB (Docker)
       ConnectionStrings__CompanyConnection: "Server=sqlserver;Database=BachMitID;User Id=sa;Password=YourStrong!Password;TrustServerCertificate=True;"
