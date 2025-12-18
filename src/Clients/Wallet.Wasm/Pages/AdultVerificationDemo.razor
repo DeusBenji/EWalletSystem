@@ -31,20 +31,33 @@
         <div class="col-md-6">
             <div class="card h-100">
                 <div class="card-body">
-                    <h5 class="card-title">Client-side verification</h5>
+                <div class="card-body">
+                    <h5 class="card-title">🔞 Voksenindhold (Simulering)</h5>
                     <p class="text-muted">
-                        Tjek sker lokalt: token er aktiv + type=18+ + hash matcher on-chain anchor.
+                        Dette er en "ekstern" hjemmeside, der kræver, at du er over 18 år.
+                        Den kigger i din E-Wallet for at se, om du har et gyldigt bevis.
                     </p>
 
                     <ul class="mb-3">
-                        <li>Token aktiv: <strong>@(_token.IsActive ? "Ja" : "Nej")</strong></li>
-                        <li>Type = 18+: <strong>@(_token.IsAgeOver18 ? "Ja" : "Nej")</strong></li>
-                        <li>Hash matcher blockchain: <strong>@(_anchorMatches ? "Ja" : "Nej")</strong></li>
+                        <li>Har bevis: <strong>@(_token != null ? "Ja" : "Nej")</strong></li>
+                        <li>Er 18+ (ifølge bevis): <strong>@(ClientSideAdult ? "Ja" : "Nej")</strong></li>
                     </ul>
 
-                    <div class="alert @(ClientSideAdult ? "alert-success" : "alert-danger")">
-                        Resultat: <strong>@(ClientSideAdult ? "Bruger er 18+" : "Bruger er ikke verificeret som 18+")</strong>
-                    </div>
+                    @if (ClientSideAdult)
+                    {
+                        <div class="alert alert-success">
+                            <h4>🎉 Adgang Godkendt!</h4>
+                            <p>Du har bevist din alder med din wallet uden at afsløre dit CPR-nummer.</p>
+                            <p><em>(Her ville du normalt blive sendt videre til indholdet...)</em></p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-danger">
+                            <h4>⛔ Adgang Nægtet</h4>
+                            <p>Du har ikke et gyldigt 18+ bevis i din wallet.</p>
+                        </div>
+                    }
 
                     <details class="mt-3">
                         <summary>Vis pseudo-kode (JS)</summary>
@@ -93,12 +106,27 @@
     private bool _serverIsAdult;
     private string? _serverMessage;
 
-    private bool ClientSideAdult => _token is not null && _token.IsAgeOver18 && _anchorMatches;
+    private bool ClientSideAdult 
+    {
+        get 
+        {
+            if (_token is null) return false;
+            if (_token.Claims.TryGetValue("IsAdult", out var isAdultStr))
+            {
+                return bool.TryParse(isAdultStr, out var b) && b;
+            }
+            return false;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        _token = await WalletService.GetLocalTokenAsync();
-        _anchorMatches = _token is not null && TokenCrypto.MatchesOnChainAnchor(_token);
+        // Get the specific AdultCredential we just issued
+        var tokens = await WalletService.GetMyTokensAsync();
+        _token = tokens.FirstOrDefault(t => t.Type == "AdultCredential");
+        
+        // Mock check for anchor match (in real app, this verifies signature against chain)
+        _anchorMatches = _token is not null; 
         _isLoading = false;
     }
 
