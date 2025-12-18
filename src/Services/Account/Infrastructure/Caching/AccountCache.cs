@@ -35,7 +35,7 @@ namespace Infrastructure.Caching
 
             try
             {
-                return JsonSerializer.Deserialize<AccountDto>(value!, JsonOptions);
+                return JsonSerializer.Deserialize<AccountDto>(value.ToString(), JsonOptions);
             }
             catch
             {
