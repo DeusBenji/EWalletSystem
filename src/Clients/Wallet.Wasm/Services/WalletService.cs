@@ -24,13 +24,29 @@ public class WalletService
         return tokens.FirstOrDefault(t => t.Type == "AdultCredential");
     }
 
-    public async Task ImportTokenAsync(string tokenId, string type, string issuer)
+    public async Task ImportTokenAsync(string tokenId, string type, string issuer, Dictionary<string, string>? customClaims = null)
     {
-        // SIMULATION: In a real app, this would call the API to get a signed VC.
-        // Here we simulate fetching/creating a valid token.
-        
+        // Require claims, no more "John Doe" fallback
+        if (customClaims == null || !customClaims.Any())
+        {
+            throw new ArgumentException("Claims are required to import a token.");
+        }
+
+        // DUPLICATE PREVENTION:
+        // If this is an AdultCredential, ensure we only have ONE.
+        // Remove any existing AdultCredential (including old "John Doe" mocks)
+        if (type == "AdultCredential")
+        {
+            var existingTokens = await GetMyTokensAsync();
+            var tokensToRemove = existingTokens.Where(t => t.Type == "AdultCredential").ToList();
+            foreach (var t in tokensToRemove)
+            {
+                await _storage.RemoveTokenAsync(t.TokenId);
+            }
+        }
+
         // Mock backend call simulation
-        await Task.Delay(500); // Simulate network
+        await Task.Delay(200); 
 
         if (string.IsNullOrWhiteSpace(tokenId)) tokenId = Guid.NewGuid().ToString();
 
@@ -41,26 +57,25 @@ public class WalletService
             Issuer = issuer,
             IssuedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddYears(1),
-            Claims = new Dictionary<string, string>
-            {
-                { "Age", "25" }, // Mock Claim
-                { "Name", "John Doe" }
-            }
+            Claims = customClaims
         };
 
         // Simulate a backend signature (hash of the content + secret)
-        // In reality, this signature comes from the server.
-        // For off-chain verification demo, we might just store the hash.
         var dataToSign = token.ComputeHash(); 
         var mockSignature = $"signed-{dataToSign}-valid"; 
 
         // Update token with mock anchor
         var signedToken = token with { 
             Signature = mockSignature, 
-            AnchorHashOnChain = dataToSign // Demo match
+            AnchorHashOnChain = dataToSign 
         };
 
         await _storage.SaveTokenAsync(signedToken);
+    }
+
+    public async Task DeleteTokenAsync(string tokenId)
+    {
+        await _storage.RemoveTokenAsync(tokenId);
     }
 
     public bool VerifyTokenLocally(LocalWalletToken token)

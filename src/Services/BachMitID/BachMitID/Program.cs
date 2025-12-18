@@ -76,6 +76,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
 builder.Services.AddScoped<IAccDbAccess, AccountDatabaseAccess>();
 builder.Services.AddScoped<IMitIdDbAccess, MitIdAccountDatabaseAccess>();
 builder.Services.AddScoped<IMitIdAccountService, MitIdAccountService>();
+builder.Services.AddSingleton<BachMitID.Infrastructure.Persistence.DbInitializer>();
 
 // Account sync service (til consumer)
 builder.Services.AddScoped<IAccountSyncService, AccountSyncService>();
@@ -194,6 +195,15 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapPrometheusScrapingEndpoint();
+
+app.MapPrometheusScrapingEndpoint();
+
+// Initialize DB
+using (var scope = app.Services.CreateScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<BachMitID.Infrastructure.Persistence.DbInitializer>();
+    await initializer.InitializeAsync();
+}
 
 app.MapControllers();
 

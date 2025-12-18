@@ -94,7 +94,11 @@ namespace BachMitID.Controllers
             }
 
             // 3) Returnér DTO til klienten
-            return Ok(dto);
+            // 3) Redirect tilbage til Wallet frontend
+            // 3) Redirect tilbage til Wallet frontend (/wallet) med claims som query params
+            // Dette gør det muligt for frontend at "claim" beviset og gemme det lokalt.
+            var query = $"?action=issue_token&isAdult={dto.IsAdult.ToString().ToLower()}&subId={dto.SubId}";
+            return Redirect("http://localhost:8081/wallet" + query);
         }
 
         [HttpGet("logout")]

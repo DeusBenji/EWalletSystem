@@ -11,15 +11,18 @@ namespace BachMitID.Application.BusinessLogicLayer
     public class MitIdAccountService : IMitIdAccountService
     {
         private readonly IMitIdDbAccess _mitIdDbAccess;
+        private readonly IAccDbAccess _accDbAccess;
         private readonly IMapper _mapper;
         private readonly IMitIdAccountCache _cache;
 
         public MitIdAccountService(
             IMitIdDbAccess mitIdDbAccess,
+            IAccDbAccess accDbAccess,
             IMapper mapper,
             IMitIdAccountCache cache)
         {
             _mitIdDbAccess = mitIdDbAccess;
+            _accDbAccess = accDbAccess;
             _mapper = mapper;
             _cache = cache;
         }
@@ -68,6 +71,16 @@ namespace BachMitID.Application.BusinessLogicLayer
                     IsNew = false
                 };
             }
+
+            // --- FK FIX START ---
+            // Ensure the parent Account exists before we try to link to it.
+            var existingAccount = await _accDbAccess.GetAccountByIdAsync(testId);
+            if (existingAccount == null)
+            {
+                // Create a placeholder account ensuring FK constraint is satisfied
+                await _accDbAccess.CreateAccountAsync(new Account(testId, "demo-user@example.com"));
+            }
+            // --- FK FIX END ---
 
             // 4) Lav DTO for ny account
             var dto = new MitIdAccountDto
