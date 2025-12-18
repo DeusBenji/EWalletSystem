@@ -1,0 +1,106 @@
+@page "/signup"
+@using Wallet.Wasm.Services
+@inject AccountClient AccountClient
+@inject NavigationManager Nav
+
+<PageTitle>Signup - E-Wallet</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm mt-4">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">Create Account</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    Start by creating an account. This will register your identity in the system backbone.
+                </p>
+
+                @if (_success)
+                {
+                    <div class="alert alert-success">
+                        <strong>Account Created!</strong><br />
+                        You are now registered in the MitID system.<br />
+                        <a href="/wallet/import" class="alert-link">Click here to import your token</a>.
+                    </div>
+                }
+                else
+                {
+                    @if (_error)
+                    {
+                        <div class="alert alert-danger">
+                            Registration failed.<br/>
+                            <small>@_errorMessage</small>
+                        </div>
+                    }
+
+                    <EditForm Model="_model" OnValidSubmit="HandleSignup">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label class="form-label">Email address</label>
+                            <InputText class="form-control" @bind-Value="_model.Email" placeholder="name@example.com" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <InputText type="password" class="form-control" @bind-Value="_model.Password" placeholder="Strong password" />
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success" disabled="@_isBusy">
+                                @(_isBusy ? "Creating..." : "Create Account")
+                            </button>
+                        </div>
+                    </EditForm>
+                }
+            </div>
+        </div>
+        
+        <div class="text-center mt-3">
+            <a href="/wallet" class="text-decoration-none">Back to Wallet</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private SignupModel _model = new();
+    private bool _isBusy;
+    private bool _success;
+    private bool _error;
+
+    private string _errorMessage = "";
+
+    private async Task HandleSignup()
+    {
+        _isBusy = true;
+        _error = false;
+        _errorMessage = "";
+
+        var result = await AccountClient.RegisterAsync(_model.Email, _model.Password);
+        
+        if (result.Success)
+        {
+            _success = true;
+        }
+        else
+        {
+            _error = true;
+            _errorMessage = result.Message;
+        }
+
+        _isBusy = false;
+    }
+
+    public class SignupModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MinLength(6)]
+        public string Password { get; set; } = "";
+    }
+}

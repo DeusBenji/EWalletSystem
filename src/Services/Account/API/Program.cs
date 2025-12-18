@@ -75,6 +75,7 @@ builder.Services.AddAuthorization();
 
 // Repositories (infra)
 builder.Services.AddSingleton<IAccountRepository, AccountRepository>();
+builder.Services.AddSingleton<DbInitializer>();
 
 // Business logic / application services
 builder.Services.AddScoped<IAccountService, Application.BusinessLogic.AccountService>();
@@ -140,6 +141,15 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapPrometheusScrapingEndpoint();
+
+app.MapPrometheusScrapingEndpoint();
+
+// Initialize DB
+using (var scope = app.Services.CreateScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<DbInitializer>();
+    await initializer.InitializeAsync();
+}
 
 app.MapControllers();
 

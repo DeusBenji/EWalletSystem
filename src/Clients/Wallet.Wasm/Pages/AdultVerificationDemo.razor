@@ -1,0 +1,161 @@
+@page "/adult-demo"
+@using Wallet.Wasm.Models
+@using Wallet.Wasm.Services
+@using Wallet.Wasm.Utilities
+@inject WalletService WalletService
+@inject AdultClient AdultClient
+
+<PageTitle>Adult Demo</PageTitle>
+
+<div class="container mt-4">
+    <h2>Adult Verification Demo</h2>
+    <p class="text-muted">
+        Demo af client-side verification (lokalt i browseren) og server-side verification (API-kald).
+    </p>
+
+    @if (_isLoading)
+    {
+        <div class="alert alert-info">Loader lokal token...</div>
+    }
+    else if (_token is null)
+    {
+        <div class="alert alert-warning">
+            Ingen token fundet i denne browser.
+            <a class="alert-link" href="/wallet/import">Importér token</a>
+        </div>
+    }
+    else
+    {
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Client-side verification</h5>
+                    <p class="text-muted">
+                        Tjek sker lokalt: token er aktiv + type=18+ + hash matcher on-chain anchor.
+                    </p>
+
+                    <ul class="mb-3">
+                        <li>Token aktiv: <strong>@(_token.IsActive ? "Ja" : "Nej")</strong></li>
+                        <li>Type = 18+: <strong>@(_token.IsAgeOver18 ? "Ja" : "Nej")</strong></li>
+                        <li>Hash matcher blockchain: <strong>@(_anchorMatches ? "Ja" : "Nej")</strong></li>
+                    </ul>
+
+                    <div class="alert @(ClientSideAdult ? "alert-success" : "alert-danger")">
+                        Resultat: <strong>@(ClientSideAdult ? "Bruger er 18+" : "Bruger er ikke verificeret som 18+")</strong>
+                    </div>
+
+                    <details class="mt-3">
+                        <summary>Vis pseudo-kode (JS)</summary>
+                        <pre class="small mt-2"><code>@ClientSideJsExample</code></pre>
+                    </details>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Server-side verification</h5>
+                    <p class="text-muted">
+                        Tjek via backend API. Bruges typisk når et website vil validere uden at stole på client-side.
+                    </p>
+
+                    <button class="btn btn-secondary" @onclick="VerifyServerSideAsync" disabled="_serverBusy">
+                        @(_serverBusy ? "Verifierer..." : "Kør server-side check")
+                    </button>
+
+                    @if (_serverMessage is not null)
+                    {
+                        <div class="alert mt-3 @(_serverIsAdult ? "alert-success" : "alert-danger")">
+                            @_serverMessage
+                        </div>
+                    }
+
+                    <details class="mt-3">
+                        <summary>Vis pseudo-kode (C#)</summary>
+                        <pre class="small mt-2"><code>@ServerSideCSharpExample</code></pre>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </div>
+    }
+</div>
+
+@code {
+    private LocalWalletToken? _token;
+    private bool _anchorMatches;
+    private bool _isLoading = true;
+
+    private bool _serverBusy;
+    private bool _serverIsAdult;
+    private string? _serverMessage;
+
+    private bool ClientSideAdult => _token is not null && _token.IsAgeOver18 && _anchorMatches;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _token = await WalletService.GetLocalTokenAsync();
+        _anchorMatches = _token is not null && TokenCrypto.MatchesOnChainAnchor(_token);
+        _isLoading = false;
+    }
+
+    private async Task VerifyServerSideAsync()
+    {
+        if (_token is null) return;
+
+        _serverBusy = true;
+        _serverMessage = null;
+
+        try
+        {
+            // Hvis jeres backend bruger tokenId (typisk), så kør sådan her:
+            var result = await AdultClient.VerifyAdultAsync(_token.TokenId);
+
+            if (result is null)
+            {
+                _serverIsAdult = false;
+                _serverMessage = "Server-side verifikation fejlede (intet svar fra API).";
+                return;
+            }
+
+            _serverIsAdult = result.IsAdult;
+            _serverMessage = _serverIsAdult
+                ? "Server-side: Brugeren er verificeret som 18+."
+                : "Server-side: Brugeren er ikke 18+ (eller token er ugyldig/udløbet).";
+        }
+        finally
+        {
+            _serverBusy = false;
+        }
+    }
+
+    private const string ClientSideJsExample =
+@"// Client-side (browser):
+// 1) Læs token fra localStorage (på wallet-domænet)
+// 2) Check expiry + type
+// 3) Hash rawToken og sammenlign med anchorHashOnChain
+const tokenJson = localStorage.getItem('wallet.local.token.v1');
+if (!tokenJson) return { isAdult: false };
+
+const token = JSON.parse(tokenJson);
+const isActive = new Date(token.expiresAt) > new Date();
+const isAdultType = token.type === 'AgeOver18';
+
+const buf = new TextEncoder().encode(token.rawToken);
+const hash = await crypto.subtle.digest('SHA-256', buf);
+// convert hash -> hex og sammenlign med token.anchorHashOnChain";
+
+    private const string ServerSideCSharpExample =
+@"// Server-side (kundens backend):
+// Send tokenId til jeres backend:
+var response = await http.PostAsJsonAsync(
+    '/api/adult/verify',
+    new { tokenId }
+);
+
+var result = await response.Content.ReadFromJsonAsync<AdultVerificationResultDto>();
+if (result?.IsAdult == true) { /* allow adult content */ }";
+}

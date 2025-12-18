@@ -272,6 +272,20 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
     restart: unless-stopped
 
+  # =====================
+  # Wallet Frontend (Blazor WASM)
+  # =====================
+  wallet-frontend:
+    build:
+      context: .
+      dockerfile: src/Clients/Wallet.Wasm/Dockerfile
+    container_name: wallet-frontend
+    ports:
+      - "8081:80"
+    restart: unless-stopped
+    depends_on:
+      - apigateway
+
 networks:
   default:
     name: bachelor-net
