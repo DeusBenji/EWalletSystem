@@ -19,6 +19,7 @@ namespace BachMitID.Tests.Services
         private readonly Mock<IMitIdDbAccess> _dbMock;
         private readonly Mock<IMapper> _mapperMock;
         private readonly Mock<IMitIdAccountCache> _cacheMock;
+        private readonly Mock<IAccDbAccess> _accDbMock;
         private readonly MitIdAccountService _sut;
 
         public MitIdAccountServiceTests()
@@ -26,9 +27,11 @@ namespace BachMitID.Tests.Services
             _dbMock = new Mock<IMitIdDbAccess>();
             _mapperMock = new Mock<IMapper>();
             _cacheMock = new Mock<IMitIdAccountCache>();
+            _accDbMock = new Mock<IAccDbAccess>();
 
             _sut = new MitIdAccountService(
                 _dbMock.Object,
+                _accDbMock.Object,
                 _mapperMock.Object,
                 _cacheMock.Object);
         }

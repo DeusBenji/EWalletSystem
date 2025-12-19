@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 namespace AccountService.API.Contracts
 {
     public class AccountRegisterRequest
+    {
         [Required]
         [EmailAddress]
         [RegularExpression(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", ErrorMessage = "Email must be a valid format (e.g. user@domain.com)")]

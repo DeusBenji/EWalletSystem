@@ -39,6 +39,7 @@ public class AuthResultServiceTests
         // arrange
         var mockDb = new Mock<IMitIdDbAccess>();
         var mockMapper = new Mock<IMapper>();
+        var mockAccDb = new Mock<IAccDbAccess>();
         var mockCache = new Mock<IMitIdAccountCache>();
 
         MitID_Account? savedEntity = null;
@@ -64,6 +65,7 @@ public class AuthResultServiceTests
 
         var service = new MitIdAccountService(
             mockDb.Object,
+            mockAccDb.Object,
             mockMapper.Object,
             mockCache.Object);
 
@@ -107,10 +109,12 @@ public class AuthResultServiceTests
     {
         var mockDb = new Mock<IMitIdDbAccess>();
         var mockMapper = new Mock<IMapper>();
+        var mockAccDb = new Mock<IAccDbAccess>();
         var mockCache = new Mock<IMitIdAccountCache>();
 
         var service = new MitIdAccountService(
             mockDb.Object,
+            mockAccDb.Object,
             mockMapper.Object,
             mockCache.Object);
 
@@ -133,10 +137,12 @@ public class AuthResultServiceTests
     {
         var mockDb = new Mock<IMitIdDbAccess>();
         var mockMapper = new Mock<IMapper>();
+        var mockAccDb = new Mock<IAccDbAccess>();
         var mockCache = new Mock<IMitIdAccountCache>();
 
         var service = new MitIdAccountService(
             mockDb.Object,
+            mockAccDb.Object,
             mockMapper.Object,
             mockCache.Object);
 
@@ -157,10 +163,12 @@ public class AuthResultServiceTests
     {
         var mockDb = new Mock<IMitIdDbAccess>();
         var mockMapper = new Mock<IMapper>();
+        var mockAccDb = new Mock<IAccDbAccess>();
         var mockCache = new Mock<IMitIdAccountCache>();
 
         var service = new MitIdAccountService(
             mockDb.Object,
+            mockAccDb.Object,
             mockMapper.Object,
             mockCache.Object);
 
@@ -181,10 +189,12 @@ public class AuthResultServiceTests
     {
         var mockDb = new Mock<IMitIdDbAccess>();
         var mockMapper = new Mock<IMapper>();
+        var mockAccDb = new Mock<IAccDbAccess>();
         var mockCache = new Mock<IMitIdAccountCache>();
 
         var service = new MitIdAccountService(
             mockDb.Object,
+            mockAccDb.Object,
             mockMapper.Object,
             mockCache.Object);
 
@@ -206,6 +216,7 @@ public class AuthResultServiceTests
     {
         var mockDb = new Mock<IMitIdDbAccess>();
         var mockMapper = new Mock<IMapper>();
+        var mockAccDb = new Mock<IAccDbAccess>();
         var mockCache = new Mock<IMitIdAccountCache>();
 
         // mapper laver en entity med et Guid
@@ -228,6 +239,7 @@ public class AuthResultServiceTests
 
         var service = new MitIdAccountService(
             mockDb.Object,
+            mockAccDb.Object,
             mockMapper.Object,
             mockCache.Object);
 
