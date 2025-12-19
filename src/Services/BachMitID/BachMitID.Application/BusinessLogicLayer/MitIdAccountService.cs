@@ -72,15 +72,12 @@ namespace BachMitID.Application.BusinessLogicLayer
                 };
             }
 
-            // --- FK FIX START ---
-            // Ensure the parent Account exists before we try to link to it.
+            // Sikre at det parent Account eksisterer før vi prøver at link til det.
             var existingAccount = await _accDbAccess.GetAccountByIdAsync(testId);
             if (existingAccount == null)
             {
-                // Create a placeholder account ensuring FK constraint is satisfied
-                await _accDbAccess.CreateAccountAsync(new Account(testId, "demo-user@example.com"));
+                return null;
             }
-            // --- FK FIX END ---
 
             // 4) Lav DTO for ny account
             var dto = new MitIdAccountDto
