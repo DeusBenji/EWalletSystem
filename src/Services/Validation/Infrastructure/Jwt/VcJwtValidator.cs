@@ -48,7 +48,7 @@ namespace ValidationService.Infrastructure.Jwt
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = publicKey,
-                    ClockSkew = TimeSpan.FromMinutes(5)
+                    ClockSkew = TimeSpan.FromSeconds(5) // Strict clock skew
                 };
                 
                 _tokenHandler.ValidateToken(jwt, validationParameters, out var validatedToken);

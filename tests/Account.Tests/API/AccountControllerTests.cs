@@ -310,5 +310,47 @@ namespace AccountSerrvicesTest.API
             Assert.Equal("account-service", service);
             Assert.True(timestamp <= DateTime.UtcNow.AddSeconds(5));
         }
+
+        [Fact]
+        public void AccountRegisterRequest_Validation_Fails_When_Email_Is_Invalid()
+        {
+            // Arrange
+            var request = new AccountRegisterRequest
+            {
+                Email = "invalid-email",
+                Password = "ValidPassword123!"
+            };
+
+            var context = new System.ComponentModel.DataAnnotations.ValidationContext(request);
+            var results = new System.Collections.Generic.List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+            // Act
+            var isValid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(request, context, results, true);
+
+            // Assert
+            Assert.False(isValid);
+            Assert.Contains(results, r => r.MemberNames.Contains(nameof(AccountRegisterRequest.Email)));
+        }
+
+        [Fact]
+        public void AccountRegisterRequest_Validation_Fails_When_Password_Is_Too_Short()
+        {
+            // Arrange
+            var request = new AccountRegisterRequest
+            {
+                Email = "valid@example.com",
+                Password = "short"
+            };
+
+            var context = new System.ComponentModel.DataAnnotations.ValidationContext(request);
+            var results = new System.Collections.Generic.List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+            // Act
+            var isValid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(request, context, results, true);
+
+            // Assert
+            Assert.False(isValid);
+            Assert.Contains(results, r => r.MemberNames.Contains(nameof(AccountRegisterRequest.Password)));
+        }
     }
 }
