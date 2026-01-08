@@ -1,6 +1,7 @@
 @page "/signup"
 @using Wallet.Wasm.Services
 @inject AccountClient AccountClient
+@inject WalletStorage WalletStorage
 @inject NavigationManager Nav
 
 <PageTitle>Signup - E-Wallet</PageTitle>
@@ -20,7 +21,6 @@
                 {
                     <div class="alert alert-success">
                         <strong>Account Created!</strong><br />
-                        You are now registered in the MitID system.<br />
                         <a href="/wallet/import" class="alert-link">Click here to import your token</a>.
                     </div>
                 }
@@ -29,7 +29,7 @@
                     @if (_error)
                     {
                         <div class="alert alert-danger">
-                            Registration failed.<br/>
+                            Registration failed.<br />
                             <small>@_errorMessage</small>
                         </div>
                     }
@@ -57,7 +57,7 @@
                 }
             </div>
         </div>
-        
+
         <div class="text-center mt-3">
             <a href="/wallet" class="text-decoration-none">Back to Wallet</a>
         </div>
@@ -69,7 +69,6 @@
     private bool _isBusy;
     private bool _success;
     private bool _error;
-
     private string _errorMessage = "";
 
     private async Task HandleSignup()
@@ -79,9 +78,11 @@
         _errorMessage = "";
 
         var result = await AccountClient.RegisterAsync(_model.Email, _model.Password);
-        
+
         if (result.Success)
         {
+            await WalletStorage.SetAccountIdAsync(result.AccountId);
+
             _success = true;
             Nav.NavigateTo("/wallet/import");
         }

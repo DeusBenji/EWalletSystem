@@ -28,7 +28,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 // Swagger / OpenAPI
-// Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -56,6 +55,9 @@ var authority = authSection["Authority"];
 var clientId = authSection["ClientId"];
 var clientSecret = authSection["ClientSecret"];
 var callbackPath = authSection["CallbackPath"] ?? "/signin-oidc";
+
+// ✅ Public origin (til gateway prefix) — fx "http://localhost:7005/mitid"
+var publicOrigin = builder.Configuration["PublicOrigin"];
 
 // 🔐 JWT settings til gateway-tokens
 var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -110,7 +112,7 @@ builder.Services
     {
         // Standard til web-login via MitID (cookies + OIDC)
         options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = "oidc";
     })
     .AddCookie()
     .AddOpenIdConnect("oidc", options =>
@@ -132,6 +134,8 @@ builder.Services
         options.CallbackPath = callbackPath;
         options.GetClaimsFromUserInfoEndpoint = true;
         options.RequireHttpsMetadata = true;
+
+       
     })
     // 🔽 JWT Bearer til interne kald fra ApiGateway
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
@@ -193,8 +197,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.MapPrometheusScrapingEndpoint();
 
 app.MapPrometheusScrapingEndpoint();
 

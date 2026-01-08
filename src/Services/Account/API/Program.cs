@@ -142,7 +142,6 @@ app.UseAuthorization();
 
 app.MapPrometheusScrapingEndpoint();
 
-app.MapPrometheusScrapingEndpoint();
 
 // Initialize DB
 using (var scope = app.Services.CreateScope())

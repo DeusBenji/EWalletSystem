@@ -2,11 +2,11 @@
 using System.Threading;
 using System.Threading.Tasks;
 using BachMitID.Application.BusinessLogicLayer.Interface;
-using BachMitID.Application.DTOs;
 using BuildingBlocks.Contracts.Events;
 using BuildingBlocks.Contracts.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace BachMitID.Controllers
@@ -18,24 +18,39 @@ namespace BachMitID.Controllers
         private readonly IMitIdAccountService _mitIdAccountService;
         private readonly IKafkaProducer _kafkaProducer;
         private readonly ILogger<AuthController> _logger;
+        private readonly IConfiguration _config;
 
         public AuthController(
             IMitIdAccountService mitIdAccountService,
             IKafkaProducer kafkaProducer,
-            ILogger<AuthController> logger)
+            ILogger<AuthController> logger,
+            IConfiguration config)
         {
             _mitIdAccountService = mitIdAccountService;
             _kafkaProducer = kafkaProducer;
             _logger = logger;
+            _config = config;
         }
 
+        // /auth/login?accountId=...&returnUrl=/wallet
         [HttpGet("login")]
-        public IActionResult Login()
+        public IActionResult Login([FromQuery] Guid accountId, [FromQuery] string? returnUrl = "/wallet")
         {
+            if (accountId == Guid.Empty)
+                return BadRequest("Missing accountId");
+
+            // anti-open-redirect (kun interne paths)
+            if (string.IsNullOrWhiteSpace(returnUrl) || !returnUrl.StartsWith("/"))
+                returnUrl = "/wallet";
+
+            // ✅ vi bærer accountId + returnUrl videre til /auth/result
+            var redirectAfterLogin =
+                $"/auth/result?accountId={accountId}&returnUrl={Uri.EscapeDataString(returnUrl)}";
+
             return Challenge(
                 new Microsoft.AspNetCore.Authentication.AuthenticationProperties
                 {
-                    RedirectUri = "/auth/result"
+                    RedirectUri = redirectAfterLogin
                 },
                 "oidc"
             );
@@ -43,10 +58,16 @@ namespace BachMitID.Controllers
 
         [Authorize]
         [HttpGet("result")]
-        public async Task<IActionResult> Result(CancellationToken ct = default)
+        public async Task<IActionResult> Result([FromQuery] Guid accountId, [FromQuery] string? returnUrl = "/wallet", CancellationToken ct = default)
         {
-            // 1) Opret / hent MitID-account ud fra claims og gem i DB
-            var result = await _mitIdAccountService.CreateFromClaimsAsync(User);
+            if (accountId == Guid.Empty)
+                return BadRequest("Missing accountId");
+
+            if (string.IsNullOrWhiteSpace(returnUrl) || !returnUrl.StartsWith("/"))
+                returnUrl = "/wallet";
+
+            // 1) Opret / hent MitID-account ud fra claims og gem i DB (linked til accountId)
+            var result = await _mitIdAccountService.CreateFromClaimsAsync(User, accountId);
 
             if (result == null)
                 return BadRequest("Could not create MitID account from claims.");
@@ -71,34 +92,19 @@ namespace BachMitID.Controllers
                         ct: ct
                     );
 
-                    _logger.LogInformation(
-                        "Published MitIdVerified for AccountId {AccountId}",
-                        dto.AccountId
-                    );
+                    _logger.LogInformation("Published MitIdVerified for AccountId {AccountId}", dto.AccountId);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(
-                        ex,
-                        "Failed to publish MitIdVerified. Continuing without event."
-                    );
-                    // login må stadig ikke fejle pga Kafka
+                    _logger.LogError(ex, "Failed to publish MitIdVerified. Continuing without event.");
                 }
             }
-            else
-            {
-                _logger.LogInformation(
-                    "MitID account already exists for AccountId {AccountId}. No 'created' event published.",
-                    dto.AccountId
-                );
-            }
 
-            // 3) Returnér DTO til klienten
-            // 3) Redirect tilbage til Wallet frontend
-            // 3) Redirect tilbage til Wallet frontend (/wallet) med claims som query params
-            // Dette gør det muligt for frontend at "claim" beviset og gemme det lokalt.
+            // 3) Redirect tilbage til Wallet frontend med claims
+            var walletBase = (_config["Wallet:BaseUrl"] ?? "http://localhost:8081").TrimEnd('/');
+
             var query = $"?action=issue_token&isAdult={dto.IsAdult.ToString().ToLower()}&subId={dto.SubId}";
-            return Redirect("http://localhost:8081/wallet" + query);
+            return Redirect(walletBase + returnUrl + query);
         }
 
         [HttpGet("logout")]

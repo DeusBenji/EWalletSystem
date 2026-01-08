@@ -28,7 +28,7 @@ namespace BachMitID.Application.BusinessLogicLayer
         }
 
         // -------- CREATE FROM CLAIMS (MitID login) --------
-        public async Task<MitIdAccountResult?> CreateFromClaimsAsync(ClaimsPrincipal user)
+        public async Task<MitIdAccountResult?> CreateFromClaimsAsync(ClaimsPrincipal user, Guid accountId)
         {
             // 1) Find sub (unik MitID-id)
             var sub = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -51,8 +51,6 @@ namespace BachMitID.Application.BusinessLogicLayer
             if (dob > today.AddYears(-age)) age--;
             bool isAdult = age >= 18;
 
-            Guid testId = new Guid("3657D51F-3BA1-46FD-9857-050666D85F9E");
-
             // Hash sub før vi gemmer
             var hashedSub = SubIdHasher.Hash(sub);
 
@@ -73,7 +71,7 @@ namespace BachMitID.Application.BusinessLogicLayer
             }
 
             // Sikre at det parent Account eksisterer før vi prøver at link til det.
-            var existingAccount = await _accDbAccess.GetAccountByIdAsync(testId);
+            var existingAccount = await _accDbAccess.GetAccountByIdAsync(accountId);
             if (existingAccount == null)
             {
                 return null;
@@ -83,7 +81,7 @@ namespace BachMitID.Application.BusinessLogicLayer
             var dto = new MitIdAccountDto
             {
                 Id = Guid.NewGuid(),   // bliver overskrevet efter DB-kald
-                AccountId = testId,
+                AccountId = accountId,
                 SubId = hashedSub,
                 IsAdult = isAdult
             };
