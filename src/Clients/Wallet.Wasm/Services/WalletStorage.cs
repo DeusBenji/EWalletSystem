@@ -16,7 +16,7 @@ public class WalletStorage
     }
 
     // -------------------------
-    // AccountId (for MitID flow)
+    // AccountId (MVP "session")
     // -------------------------
     public async Task SetAccountIdAsync(Guid accountId)
     {
@@ -26,13 +26,31 @@ public class WalletStorage
     public async Task<Guid> GetAccountIdAsync()
     {
         var value = await _localStorage.GetItemAsync<string>(AccountIdStorageKey);
-
         return Guid.TryParse(value, out var id) ? id : Guid.Empty;
     }
 
     public async Task ClearAccountIdAsync()
     {
         await _localStorage.RemoveItemAsync(AccountIdStorageKey);
+    }
+
+    public async Task<bool> IsLoggedInAsync()
+    {
+        var id = await GetAccountIdAsync();
+        return id != Guid.Empty;
+    }
+
+    /// <summary>
+    /// MVP logout: clear session + optional clear wallet tokens (recommended).
+    /// </summary>
+    public async Task LogoutAsync(bool clearTokens = true)
+    {
+        await ClearAccountIdAsync();
+
+        if (clearTokens)
+        {
+            await _localStorage.RemoveItemAsync(TokensStorageKey);
+        }
     }
 
     // -------------------------

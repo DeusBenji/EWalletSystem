@@ -3,6 +3,9 @@
     <File Path="docker-compose.yml" />
     <File Path="README.md" />
   </Folder>
+  <Folder Name="/src/Clients/">
+    <Project Path="src/Clients/Wallet.Wasm/Wallet.Wasm.csproj" />
+  </Folder>
 
 
   <Folder Name="/src/Gateway/">

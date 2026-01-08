@@ -35,5 +35,7 @@ builder.Services.AddScoped<WalletStorage>();
 builder.Services.AddScoped<WalletService>();
 builder.Services.AddScoped<AdultClient>();
 builder.Services.AddScoped<AccountClient>();
+builder.Services.AddScoped<AuthClient>();
+
 
 await builder.Build().RunAsync();
