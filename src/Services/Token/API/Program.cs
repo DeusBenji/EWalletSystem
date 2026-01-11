@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Metrics
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics =>
+    {
+        metrics.AddPrometheusExporter();
+        metrics.AddMeter("Microsoft.AspNetCore.Hosting", "Microsoft.AspNetCore.Server.Kestrel");
+    });
 
 // -----------------------------------------------------
 // AUTH (JWT Bearer)
@@ -167,6 +176,8 @@ if (app.Environment.IsDevelopment())
 // 🔐 auth middleware order matters
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapPrometheusScrapingEndpoint();
 
 app.MapControllers();
 app.Run();

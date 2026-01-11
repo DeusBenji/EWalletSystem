@@ -1,10 +1,5 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using ApiGateway.Helpers;
+﻿using ApiGateway.Helpers;
 using ApiGateway.Services;
-using Microsoft.IdentityModel.Tokens;
-using Yarp.ReverseProxy;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,16 +14,15 @@ builder.Services
     .AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
-// CORS for Blazor wallet
+// CORS for Wallet (dev-friendly: allow any localhost port)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowWallet", policy =>
     {
         policy
-            .WithOrigins(
-                "https://localhost:7160",
-                "http://localhost:5160"
-            )
+            .SetIsOriginAllowed(origin =>
+                origin.StartsWith("http://localhost:") ||
+                origin.StartsWith("https://localhost:"))
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -36,7 +30,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("AllowWallet");
 
 //

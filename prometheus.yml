@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'account-service'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['account-service:8080']
+
+  - job_name: 'validation-service'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['validation-service:8080']
+
+  - job_name: 'token-service'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['token-service:8080']
+
+  - job_name: 'bachmitid-api'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['bachmitid-api:8080']
+
+  - job_name: 'fabric-resolver'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['fabric-resolver:8080']

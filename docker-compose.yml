@@ -201,6 +201,8 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_URLS: "http://+:8080"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      Wallet__BaseUrl: "http://localhost:8081"
 
       # DB (Docker)
       ConnectionStrings__CompanyConnection: "Server=sqlserver;Database=BachMitID;User Id=sa;Password=YourStrong!Password;TrustServerCertificate=True;"
@@ -256,6 +258,34 @@ services:
       - account-service
       - validation-service
       - token-service
+
+  # =====================
+  # Prometheus
+  # =====================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    restart: unless-stopped
+
+  # =====================
+  # Wallet Frontend (Blazor WASM)
+  # =====================
+  wallet-frontend:
+    build:
+      context: .
+      dockerfile: src/Clients/Wallet.Wasm/Dockerfile
+    container_name: wallet-frontend
+    ports:
+      - "8081:80"
+    restart: unless-stopped
+    depends_on:
+      - apigateway
 
 networks:
   default:

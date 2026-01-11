@@ -1,0 +1,97 @@
+@page "/wallet/import"
+@using Wallet.Wasm.Services
+@inject NavigationManager Nav
+@inject WalletStorage WalletStorage
+
+<PageTitle>Import Identity Token</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm mt-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Import Identity Token</h4>
+            </div>
+            <div class="card-body text-center">
+                <p class="mb-4">
+                    To issue a secure identity token to your wallet, you must verify your identity using <strong>MitID</strong>.
+                </p>
+
+                <div class="alert alert-info text-start">
+                    <small>
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        This will redirect you to the official MitID authentication page.
+                        After verification, your credential will be issued.
+                    </small>
+                </div>
+
+                <div class="d-grid gap-2 col-8 mx-auto mt-4">
+                    <button class="btn btn-lg btn-primary shadow-sm hover-elevate"
+                            @onclick="StartMitIdLogin"
+                            disabled="@_busy">
+                        <span class="bi bi-person-badge me-2"></span>
+                        @(_busy ? "Redirecting..." : "Log in with MitID")
+                    </button>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_error))
+                {
+                    <div class="alert alert-danger mt-3 text-start">
+                        <small>@_error</small>
+                    </div>
+                }
+
+                <div class="mt-4 text-muted small">
+                    <p>Issues? Ensure you have <a href="/signup">created an account</a> first.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool _busy;
+    private string _error = "";
+
+    private async Task StartMitIdLogin()
+    {
+        _busy = true;
+        _error = "";
+
+        try
+        {
+            // Hent AccountId gemt efter signup / login
+            var accountId = await WalletStorage.GetAccountIdAsync();
+
+            if (accountId == Guid.Empty)
+            {
+                _error = "No AccountId found. Please create an account first.";
+                return;
+            }
+
+            /*
+             * VIGTIGT:
+             * ----------
+             * MitID (OIDC + PAR) kræver HTTPS og fungerer dårligt bag gateway i dev.
+             * Derfor starter vi login-flowet DIREKTE på BachMitID i dev.
+             *
+             * Gateway bruges stadig til ALLE andre API-kald.
+             *
+             * Når vi går i prod med HTTPS gateway + rigtigt domæne,
+             * kan dette flyttes tilbage bag gateway.
+             */
+            var loginUrl =
+                $"http://localhost:7004/auth/login?accountId={accountId}&returnUrl=/wallet";
+
+            // forceLoad = true er vigtigt for OIDC redirects
+            Nav.NavigateTo(loginUrl, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

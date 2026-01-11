@@ -21,6 +21,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using StackExchange.Redis;
 using System.Text;
+using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +39,14 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+// Metrics
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics =>
+    {
+        metrics.AddPrometheusExporter();
+        metrics.AddMeter("Microsoft.AspNetCore.Hosting", "Microsoft.AspNetCore.Server.Kestrel");
+    });
+
 var redisConn = builder.Configuration.GetConnectionString("RedisConnection")
     ?? throw new InvalidOperationException("RedisConnection is missing from appsettings.json");
 
@@ -46,6 +55,9 @@ var authority = authSection["Authority"];
 var clientId = authSection["ClientId"];
 var clientSecret = authSection["ClientSecret"];
 var callbackPath = authSection["CallbackPath"] ?? "/signin-oidc";
+
+// ✅ Public origin (til gateway prefix) — fx "http://localhost:7005/mitid"
+var publicOrigin = builder.Configuration["PublicOrigin"];
 
 // 🔐 JWT settings til gateway-tokens
 var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -66,6 +78,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
 builder.Services.AddScoped<IAccDbAccess, AccountDatabaseAccess>();
 builder.Services.AddScoped<IMitIdDbAccess, MitIdAccountDatabaseAccess>();
 builder.Services.AddScoped<IMitIdAccountService, MitIdAccountService>();
+builder.Services.AddSingleton<BachMitID.Infrastructure.Persistence.DbInitializer>();
 
 // Account sync service (til consumer)
 builder.Services.AddScoped<IAccountSyncService, AccountSyncService>();
@@ -99,7 +112,7 @@ builder.Services
     {
         // Standard til web-login via MitID (cookies + OIDC)
         options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = "oidc";
     })
     .AddCookie()
     .AddOpenIdConnect("oidc", options =>
@@ -121,6 +134,8 @@ builder.Services
         options.CallbackPath = callbackPath;
         options.GetClaimsFromUserInfoEndpoint = true;
         options.RequireHttpsMetadata = true;
+
+       
     })
     // 🔽 JWT Bearer til interne kald fra ApiGateway
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
@@ -182,6 +197,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapPrometheusScrapingEndpoint();
+
+// Initialize DB
+using (var scope = app.Services.CreateScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<BachMitID.Infrastructure.Persistence.DbInitializer>();
+    await initializer.InitializeAsync();
+}
 
 app.MapControllers();
 

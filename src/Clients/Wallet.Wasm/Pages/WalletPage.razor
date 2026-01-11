@@ -1,0 +1,143 @@
+@page "/wallet"
+@using Wallet.Wasm.Models
+@using Wallet.Wasm.Services
+@inject WalletService WalletService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>My Wallet</PageTitle>
+
+<h1>My Wallet</h1>
+<p>Manage your local identity credentials securely off-chain.</p>
+
+@if (_tokens == null)
+{
+    <p><em>Loading your wallet...</em></p>
+}
+else if (!_tokens.Any())
+{
+    <div class="alert alert-warning">
+        Your wallet is empty. <a href="wallet/import">Import a token</a> to get started.
+    </div>
+}
+else
+{
+    <div class="row">
+        @foreach (var token in _tokens)
+        {
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between">
+                        <span>@token.Type</span>
+                        @if (token.IsExpired)
+                        {
+                            <span class="badge bg-danger">Expired</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">@token.Issuer</h5>
+                        <p class="card-text text-muted small">
+                            ID: @(token.TokenId.Length > 8 ? token.TokenId.Substring(0, 8) + "..." : token.TokenId)
+                        </p>
+                        
+                        <h6>Claims:</h6>
+                        <ul class="list-group list-group-flush mb-3">
+                            @foreach (var claim in token.Claims)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    @claim.Key
+                                    <span class="fw-bold">@claim.Value</span>
+                                </li>
+                            }
+                        </ul>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">Expires: @token.ExpiresAt.ToShortDateString()</small>
+                            <div>
+                                <button class="btn btn-outline-danger btn-sm me-2" @onclick="() => Delete(token.TokenId)">
+                                    <span class="bi bi-trash"></span>
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm" @onclick="() => Verify(token)">
+                                    Verify locally
+                                </button>
+                            </div>
+                        </div>
+                        
+                        @if (_verificationResults.TryGetValue(token.TokenId, out var isValid))
+                        {
+                            <div class="mt-2 alert @(isValid ? "alert-success" : "alert-danger") py-1 px-2 mb-0">
+                                Local Verification: @(isValid ? "PASSED" : "FAILED")
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<LocalWalletToken>? _tokens;
+    private Dictionary<string, bool> _verificationResults = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check for query parameters signaling a new token issuance
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("action", out var action) && action == "issue_token")
+        {
+            await HandleTokenIssuance(query);
+            
+            // Clear URL to prevent re-issuance on refresh
+            Nav.NavigateTo("/wallet", replace: true);
+            return; // Restart lifecycle implies we might not need to load tokens here if Nav navigates away immediately, but safer to let it flow or return.
+            // Actually Nav.NavigateTo will trigger a new load, so we can stop here.
+        }
+
+        _tokens = await WalletService.GetMyTokensAsync();
+    }
+
+    private async Task HandleTokenIssuance(Dictionary<string, Microsoft.Extensions.Primitives.StringValues> queryParams)
+    {
+        var isAdultStr = queryParams["isAdult"];
+        var subId = queryParams["subId"];
+        
+        // Default to false/unknown if missing
+        bool isAdult = bool.TryParse(isAdultStr, out var b) && b;
+
+        var claims = new Dictionary<string, string>
+        {
+            { "IsAdult", isAdult.ToString() },
+            { "SubId", subId.ToString() },
+            { "VerifiedAt", DateTime.UtcNow.ToString("o") }
+        };
+
+        await WalletService.ImportTokenAsync(
+            tokenId: Guid.NewGuid().ToString(),
+            type: "AdultCredential",
+            issuer: "MitID (Signicat)",
+            customClaims: claims
+        );
+    }
+
+    private void Verify(LocalWalletToken token)
+    {
+        var result = WalletService.VerifyTokenLocally(token);
+        _verificationResults[token.TokenId] = result;
+    }
+
+    private async Task Delete(string tokenId)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this token?"))
+        {
+            await WalletService.DeleteTokenAsync(tokenId);
+            _tokens = await WalletService.GetMyTokensAsync();
+        }
+    }
+}

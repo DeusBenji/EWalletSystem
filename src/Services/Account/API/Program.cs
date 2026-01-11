@@ -13,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
 using System.Text;
+using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +32,14 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "Account Service API", Version = "v1" });
 });
+
+// Metrics
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics =>
+    {
+        metrics.AddPrometheusExporter();
+        metrics.AddMeter("Microsoft.AspNetCore.Hosting", "Microsoft.AspNetCore.Server.Kestrel");
+    });
 
 // ----------------- AUTH (JWT Bearer) -----------------
 builder.Services
@@ -66,6 +75,7 @@ builder.Services.AddAuthorization();
 
 // Repositories (infra)
 builder.Services.AddSingleton<IAccountRepository, AccountRepository>();
+builder.Services.AddSingleton<DbInitializer>();
 
 // Business logic / application services
 builder.Services.AddScoped<IAccountService, Application.BusinessLogic.AccountService>();
@@ -129,6 +139,16 @@ app.UseHttpsRedirection();
 // 🔐 auth middleware order matters
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapPrometheusScrapingEndpoint();
+
+
+// Initialize DB
+using (var scope = app.Services.CreateScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<DbInitializer>();
+    await initializer.InitializeAsync();
+}
 
 app.MapControllers();
 

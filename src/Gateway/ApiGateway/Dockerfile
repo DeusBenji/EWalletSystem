@@ -1,12 +1,12 @@
-ï»¿FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# KopiÃ©r csproj sÃ¥ restore kan kÃ¸res separat (hurtigere builds)
+# Kopiér csproj så restore kan køres separat (hurtigere builds)
 COPY ["src/Gateway/ApiGateway/ApiGateway.csproj", "src/Gateway/ApiGateway/"]
 
 RUN dotnet restore "src/Gateway/ApiGateway/ApiGateway.csproj"
 
-# KopiÃ©r resten af lÃ¸sningen ind
+# Kopiér resten af løsningen ind
 COPY . .
 
 # Byg og publish ApiGateway
@@ -15,7 +15,7 @@ RUN dotnet build "ApiGateway.csproj" -c Release -o /app/build
 RUN dotnet publish "ApiGateway.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 EXPOSE 8080
 COPY --from=build /app/publish .

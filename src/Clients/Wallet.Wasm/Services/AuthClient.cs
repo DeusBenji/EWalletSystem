@@ -1,0 +1,35 @@
+using System.Net.Http.Json;
+
+namespace Wallet.Wasm.Services;
+
+public class AuthClient
+{
+    private readonly HttpClient _http;
+
+    // via gateway: /account -> account-service
+    private const string LoginPath = "account/api/accounts/login";
+
+    public AuthClient(HttpClient http) => _http = http;
+
+    private sealed class LoginResponse
+    {
+        public Guid AccountId { get; set; }
+    }
+
+    public async Task<(bool Success, Guid AccountId, string Error)> LoginAsync(string email, string password)
+    {
+        var res = await _http.PostAsJsonAsync(LoginPath, new { email, password });
+
+        if (!res.IsSuccessStatusCode)
+        {
+            var msg = await res.Content.ReadAsStringAsync();
+            return (false, Guid.Empty, msg);
+        }
+
+        var payload = await res.Content.ReadFromJsonAsync<LoginResponse>();
+        if (payload == null || payload.AccountId == Guid.Empty)
+            return (false, Guid.Empty, "Login OK, but no AccountId returned.");
+
+        return (true, payload.AccountId, "");
+    }
+}

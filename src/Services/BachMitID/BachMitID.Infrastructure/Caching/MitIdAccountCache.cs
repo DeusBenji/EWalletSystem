@@ -23,7 +23,7 @@ namespace BachMitID.Infrastructure.Cache
             if (value.IsNullOrEmpty)
                 return null;
 
-            return JsonSerializer.Deserialize<MitIdAccountDto>(value!);
+            return JsonSerializer.Deserialize<MitIdAccountDto>(value.ToString());
         }
 
         public async Task SetAsync(MitIdAccountDto dto, TimeSpan ttl)
