@@ -68,13 +68,15 @@ namespace BachMitID.Tests.Services
         {
             // Arrange
             var user = CreateUserWithClaims(sub: null, dob: "1990-01-01");
+            var accountId = Guid.NewGuid();
 
             // Act
-            var result = await _sut.CreateFromClaimsAsync(user);
+            var result = await _sut.CreateFromClaimsAsync(user, accountId);
 
             // Assert
             Assert.Null(result);
             _dbMock.Verify(d => d.GetMitIdAccountBySubId(It.IsAny<string>()), Times.Never);
+            _accDbMock.Verify(a => a.GetAccountByIdAsync(It.IsAny<Guid>()), Times.Never);
         }
 
         [Fact]
@@ -82,13 +84,15 @@ namespace BachMitID.Tests.Services
         {
             // Arrange
             var user = CreateUserWithClaims(sub: "12345", dob: null);
+            var accountId = Guid.NewGuid();
 
             // Act
-            var result = await _sut.CreateFromClaimsAsync(user);
+            var result = await _sut.CreateFromClaimsAsync(user, accountId);
 
             // Assert
             Assert.Null(result);
             _dbMock.Verify(d => d.GetMitIdAccountBySubId(It.IsAny<string>()), Times.Never);
+            _accDbMock.Verify(a => a.GetAccountByIdAsync(It.IsAny<Guid>()), Times.Never);
         }
 
         [Fact]
@@ -96,13 +100,15 @@ namespace BachMitID.Tests.Services
         {
             // Arrange
             var user = CreateUserWithClaims(sub: "12345", dob: "not-a-date");
+            var accountId = Guid.NewGuid();
 
             // Act
-            var result = await _sut.CreateFromClaimsAsync(user);
+            var result = await _sut.CreateFromClaimsAsync(user, accountId);
 
             // Assert
             Assert.Null(result);
             _dbMock.Verify(d => d.GetMitIdAccountBySubId(It.IsAny<string>()), Times.Never);
+            _accDbMock.Verify(a => a.GetAccountByIdAsync(It.IsAny<Guid>()), Times.Never);
         }
 
         [Fact]
@@ -112,6 +118,7 @@ namespace BachMitID.Tests.Services
             var sub = "mitid-user-1";
             var hashedSub = SubIdHasher.Hash(sub);
             var user = CreateUserWithClaims(sub, "1990-01-01");
+            var accountId = Guid.NewGuid();
 
             var entity = new MitID_Account
             {
@@ -138,7 +145,7 @@ namespace BachMitID.Tests.Services
                 .Returns(dto);
 
             // Act
-            var result = await _sut.CreateFromClaimsAsync(user);
+            var result = await _sut.CreateFromClaimsAsync(user, accountId);
 
             // Assert
             Assert.NotNull(result);
@@ -146,11 +153,38 @@ namespace BachMitID.Tests.Services
             Assert.Equal(dto, result.Account);
 
             _dbMock.Verify(d => d.CreateMitIdAccount(It.IsAny<MitID_Account>()), Times.Never);
+            _accDbMock.Verify(a => a.GetAccountByIdAsync(It.IsAny<Guid>()), Times.Never); // new-path only
 
             _cacheMock.Verify(c => c.SetAsync(
                     dto,
                     It.IsAny<TimeSpan>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateFromClaimsAsync_WhenParentAccountMissing_ReturnsNull_AndDoesNotCreate()
+        {
+            // Arrange
+            var sub = "new-mitid-user";
+            var hashedSub = SubIdHasher.Hash(sub);
+            var user = CreateUserWithClaims(sub, "1990-01-01");
+            var accountId = Guid.NewGuid();
+
+            _dbMock
+                .Setup(d => d.GetMitIdAccountBySubId(hashedSub))
+                .ReturnsAsync((MitID_Account?)null);
+
+            _accDbMock
+                .Setup(a => a.GetAccountByIdAsync(accountId))
+                .ReturnsAsync((Account?)null);
+
+            // Act
+            var result = await _sut.CreateFromClaimsAsync(user, accountId);
+
+            // Assert
+            Assert.Null(result);
+            _dbMock.Verify(d => d.CreateMitIdAccount(It.IsAny<MitID_Account>()), Times.Never);
+            _cacheMock.Verify(c => c.SetAsync(It.IsAny<MitIdAccountDto>(), It.IsAny<TimeSpan>()), Times.Never);
         }
 
         [Fact]
@@ -161,10 +195,17 @@ namespace BachMitID.Tests.Services
             var hashedSub = SubIdHasher.Hash(sub);
             var user = CreateUserWithClaims(sub, "1990-01-01");
 
-            // Ingen eksisterende account
+            var accountId = new Guid("3657D51F-3BA1-46FD-9857-050666D85F9E");
+
+            // Ingen eksisterende account på samme hashed SubId
             _dbMock
                 .Setup(d => d.GetMitIdAccountBySubId(hashedSub))
                 .ReturnsAsync((MitID_Account?)null);
+
+            // Parent account MUST exist (nyt krav)
+            _accDbMock
+                .Setup(a => a.GetAccountByIdAsync(accountId))
+                .ReturnsAsync(new Account(accountId, "test@example.com"));
 
             // Mapper DTO -> entity
             _mapperMock
@@ -186,7 +227,7 @@ namespace BachMitID.Tests.Services
                 .ReturnsAsync(newId);
 
             // Act
-            var result = await _sut.CreateFromClaimsAsync(user);
+            var result = await _sut.CreateFromClaimsAsync(user, accountId);
 
             // Assert
             Assert.NotNull(result);
@@ -195,23 +236,19 @@ namespace BachMitID.Tests.Services
 
             var account = result.Account!;
             Assert.Equal(newId, account.Id);
+            Assert.Equal(accountId, account.AccountId);
+            Assert.Equal(hashedSub, account.SubId);
             Assert.True(account.IsAdult);
 
-            var expectedTestAccountId =
-                new Guid("3657D51F-3BA1-46FD-9857-050666D85F9E");
-
-            Assert.Equal(expectedTestAccountId, account.AccountId);
-            Assert.Equal(hashedSub, account.SubId);
-
-            // Tjek hvad der blev gemt i DB
+            // DB entity (det der bliver gemt) skal have korrekt AccountID/SubID
             Assert.NotNull(capturedEntity);
-            Assert.Equal(expectedTestAccountId, capturedEntity!.AccountID);
+            Assert.Equal(accountId, capturedEntity!.AccountID);
             Assert.Equal(hashedSub, capturedEntity.SubID);
 
             _cacheMock.Verify(c => c.SetAsync(
                     It.Is<MitIdAccountDto>(d =>
                         d.Id == newId &&
-                        d.AccountId == expectedTestAccountId &&
+                        d.AccountId == accountId &&
                         d.SubId == hashedSub),
                     It.IsAny<TimeSpan>()),
                 Times.Once);
