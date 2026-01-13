@@ -44,52 +44,56 @@ app.MapReverseProxy(proxyPipeline =>
 {
     proxyPipeline.Use(async (context, next) =>
     {
-        var path = context.Request.Path.Value?.ToLowerInvariant();
+        var rawPath = context.Request.Path.Value ?? "";
+        var path = rawPath.ToLowerInvariant();
 
-        if (!string.IsNullOrWhiteSpace(path))
+        // ✅ Support både "/api/xxx" og "/xxx"
+        // Så vi kan matche stabilt uanset routes
+        var normalized = path.StartsWith("/api/")
+            ? path.Substring(4)   // fjerner "/api"
+            : path;
+
+        var tokenService = context.RequestServices.GetRequiredService<IJwtTokenService>();
+
+        // MitID
+        if (normalized.StartsWith("/mitid"))
         {
-            var tokenService = context.RequestServices.GetRequiredService<IJwtTokenService>();
+            var jwt = tokenService.CreateServiceToken(
+                audience: "BachMitID",
+                scope: "mitid.read"
+            );
 
-            // MitID
-            if (path.StartsWith("/mitid"))
-            {
-                string jwt = tokenService.CreateServiceToken(
-                    audience: "BachMitID",
-                    scope: "mitid.read"
-                );
+            context.Request.Headers["Authorization"] = $"Bearer {jwt}";
+        }
+        // Account
+        else if (normalized.StartsWith("/account"))
+        {
+            var jwt = tokenService.CreateServiceToken(
+                audience: "AccountService",
+                scope: "account.read"
+            );
 
-                context.Request.Headers["Authorization"] = $"Bearer {jwt}";
-            }
-            // Account
-            else if (path.StartsWith("/account"))
-            {
-                string jwt = tokenService.CreateServiceToken(
-                    audience: "AccountService",
-                    scope: "account.read"
-                );
+            context.Request.Headers["Authorization"] = $"Bearer {jwt}";
+        }
+        // Token
+        else if (normalized.StartsWith("/token"))
+        {
+            var jwt = tokenService.CreateServiceToken(
+                audience: "TokenService",
+                scope: "token.issue"
+            );
 
-                context.Request.Headers["Authorization"] = $"Bearer {jwt}";
-            }
-            // Token
-            else if (path.StartsWith("/token"))
-            {
-                string jwt = tokenService.CreateServiceToken(
-                    audience: "TokenService",
-                    scope: "token.issue"
-                );
+            context.Request.Headers["Authorization"] = $"Bearer {jwt}";
+        }
+        // ✅ Validation
+        else if (normalized.StartsWith("/validation"))
+        {
+            var jwt = tokenService.CreateServiceToken(
+                audience: "ValidationService",
+                scope: "validation.verify"
+            );
 
-                context.Request.Headers["Authorization"] = $"Bearer {jwt}";
-            }
-            // Validation
-            else if (path.StartsWith("/validation"))
-            {
-                string jwt = tokenService.CreateServiceToken(
-                    audience: "ValidationService",
-                    scope: "validation.verify"
-                );
-
-                context.Request.Headers["Authorization"] = $"Bearer {jwt}";
-            }
+            context.Request.Headers["Authorization"] = $"Bearer {jwt}";
         }
 
         await next();

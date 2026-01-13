@@ -14,52 +14,73 @@ namespace Infrastructure.Blockchain
         public FabricLookupClient(HttpClient httpClient, IConfiguration config)
         {
             _httpClient = httpClient;
-            _baseUrl = config["Fabric:BaseUrl"] ?? "http://localhost:8080";
+            _baseUrl = (config["Fabric:BaseUrl"] ?? "http://localhost:8080").TrimEnd('/');
         }
 
-        /// <summary>
-        /// Resolver en DID til et DID Document fra Fabric
-        /// </summary>
         public async Task<DidDocument?> ResolveDidAsync(string did, CancellationToken ct = default)
         {
             try
             {
-                // Kald Go service: GET /dids/{did}
-                var response = await _httpClient.GetAsync($"{_baseUrl}/dids/{did}", ct);
+                if (string.IsNullOrWhiteSpace(did))
+                    return null;
 
+                // ✅ encode DID
+                var didEncoded = Uri.EscapeDataString(did);
+
+                // Go service: GET /dids/{did}
+                var response = await _httpClient.GetAsync($"{_baseUrl}/dids/{didEncoded}", ct);
                 if (!response.IsSuccessStatusCode)
                     return null;
 
                 var result = await response.Content.ReadFromJsonAsync<GoDidDocumentResponse>(cancellationToken: ct);
-
                 if (result == null)
                     return null;
 
-                // Map fra Go response til domain model
-                return new DidDocument
+                var doc = new DidDocument
                 {
                     Id = result.Id,
                     VerificationMethods = result.VerificationMethod?.Select(vm => vm.Id).ToList() ?? new(),
                     AssertionMethods = result.AssertionMethod ?? new()
                 };
+
+                if (result.VerificationMethod != null)
+                {
+                    foreach (var vm in result.VerificationMethod)
+                    {
+                        doc.VerificationMethodDetails.Add(new DidVerificationMethod
+                        {
+                            Id = vm.Id,
+                            Type = vm.Type,
+                            Controller = vm.Controller,
+
+                            // ✅ DTO felter du HAR:
+                            PublicKeyJwk = vm.PublicKeyJwk,
+
+                            // ✅ Base58 bliver lagt her (så validator kan bruge det hvis den kan)
+                            PublicKeyMultibase = vm.PublicKeyBase58
+                        });
+                    }
+                }
+
+                return doc;
             }
             catch (HttpRequestException)
             {
-                // DID ikke fundet eller netværksfejl
                 return null;
             }
         }
 
-        /// <summary>
-        /// Checker om en hash eksisterer på Fabric blockchain
-        /// </summary>
         public async Task<bool> HashExistsAsync(string hash, CancellationToken ct = default)
         {
             try
             {
-                // Kald Go service: GET /anchors/{hash}/verify
-                var response = await _httpClient.GetAsync($"{_baseUrl}/anchors/{hash}/verify", ct);
+                if (string.IsNullOrWhiteSpace(hash))
+                    return false;
 
+                var hashEncoded = Uri.EscapeDataString(hash);
+
+                // Go service: GET /anchors/{hash}/verify
+                var response = await _httpClient.GetAsync($"{_baseUrl}/anchors/{hashEncoded}/verify", ct);
                 if (!response.IsSuccessStatusCode)
                     return false;
 
@@ -71,9 +92,5 @@ namespace Infrastructure.Blockchain
                 return false;
             }
         }
-
-        
-
-       
     }
 }

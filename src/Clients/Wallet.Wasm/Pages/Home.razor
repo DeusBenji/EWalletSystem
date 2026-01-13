@@ -94,7 +94,7 @@
 
         try
         {
-            var (success, accountId, error) =
+            var (success, accountId, jwt, error) =
                 await AuthClient.LoginAsync(_model.Email, _model.Password);
 
             if (!success)
@@ -104,6 +104,17 @@
             }
 
             await WalletStorage.SetAccountIdAsync(accountId);
+
+            // ✅ GEM JWT så /api/tokens kan kaldes (TokenService er [Authorize])
+            if (!string.IsNullOrWhiteSpace(jwt))
+            {
+                await WalletStorage.SetJwtAsync(jwt);
+            }
+            else
+            {
+                _error = "Login succeeded, but no access token (JWT) was returned. Token import will not work.";
+                return;
+            }
 
             // Efter login: send brugeren til wallet
             Nav.NavigateTo("/wallet");

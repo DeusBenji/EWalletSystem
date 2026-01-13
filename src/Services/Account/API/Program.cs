@@ -1,5 +1,6 @@
 ﻿using AccountService.API.BackgroundServices;
 using AccountService.API.Mapping;
+using AccountService.API.Security;
 using Application.BusinessLogic;
 using Application.Interfaces;
 using Application.Mapping;
@@ -11,9 +12,9 @@ using Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using OpenTelemetry.Metrics;
 using StackExchange.Redis;
 using System.Text;
-using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -92,6 +93,7 @@ builder.Services.AddAutoMapper(cfg =>
 
 // Cross-cutting services
 builder.Services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
+builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaProducer, BuildingBlocks.Kafka.KafkaProducer>();
 builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaConsumer, BuildingBlocks.Kafka.KafkaConsumer>();
 
