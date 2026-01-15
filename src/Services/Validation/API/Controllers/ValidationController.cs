@@ -26,10 +26,39 @@ namespace Api.Controllers
             _logger = logger;
         }
 
+        // -----------------------------
+        // PRIMARY API ENDPOINT
+        // POST /api/validation/verify
+        // -----------------------------
+        [AllowAnonymous]
         [HttpPost("verify")]
         [ProducesResponseType(typeof(VerifyCredentialResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(VerifyCredentialResponse), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<VerifyCredentialResponse>> Verify([FromBody] VerifyCredentialRequest request)
+        public async Task<ActionResult<VerifyCredentialResponse>> Verify(
+            [FromBody] VerifyCredentialRequest request)
+        {
+            return await VerifyInternal(request);
+        }
+
+        // -----------------------------
+        // GATEWAY COMPAT ENDPOINT
+        // POST /verify
+        // -----------------------------
+        [AllowAnonymous]
+        [HttpPost("/verify")]
+        [ProducesResponseType(typeof(VerifyCredentialResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(VerifyCredentialResponse), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<VerifyCredentialResponse>> VerifyViaGateway(
+            [FromBody] VerifyCredentialRequest request)
+        {
+            return await VerifyInternal(request);
+        }
+
+        // -----------------------------
+        // Shared logic
+        // -----------------------------
+        private async Task<ActionResult<VerifyCredentialResponse>> VerifyInternal(
+            VerifyCredentialRequest request)
         {
             if (request is null || string.IsNullOrWhiteSpace(request.VcJwt))
             {
@@ -42,9 +71,7 @@ namespace Api.Controllers
             }
 
             var dto = _mapper.Map<VerifyCredentialDto>(request);
-
             var result = await _service.VerifyAsync(dto);
-
             var response = _mapper.Map<VerifyCredentialResponse>(result);
 
             if (!result.IsValid)

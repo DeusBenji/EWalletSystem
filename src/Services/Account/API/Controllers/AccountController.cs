@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using AccountService.API.Contracts;
+using AccountService.API.Security;
 using Application.DTOs;
 using Application.Interfaces;
 using AutoMapper;
@@ -19,15 +20,18 @@ namespace AccountService.API.Controllers
         private readonly IAccountService _service;
         private readonly ILogger<AccountController> _logger;
         private readonly IMapper _mapper;
+        private readonly JwtTokenService _jwtTokenService;
 
         public AccountController(
             IAccountService service,
             ILogger<AccountController> logger,
-            IMapper mapper)
+            IMapper mapper,
+            JwtTokenService jwtTokenService)
         {
             _service = service;
             _logger = logger;
             _mapper = mapper;
+            _jwtTokenService = jwtTokenService;
         }
 
         // Public: man skal kunne oprette konto uden at være logget ind
@@ -57,7 +61,7 @@ namespace AccountService.API.Controllers
             }
         }
 
-        // Public: login uden token
+        // Public: login (NU returnerer vi også JWT)
         [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] AccountLoginRequest request, CancellationToken ct)
@@ -70,8 +74,21 @@ namespace AccountService.API.Controllers
             if (!result.Success)
                 return Unauthorized(new { error = result.Failure });
 
-            return Ok(new { result.AccountId });
+            // ✅ result.AccountId is Guid? (nullable)
+            if (!result.AccountId.HasValue || result.AccountId.Value == Guid.Empty)
+                return Unauthorized(new { error = "Login OK, but AccountId was invalid." });
+
+            var accountId = result.AccountId.Value;
+
+            var accessToken = _jwtTokenService.CreateToken(accountId);
+
+            return Ok(new
+            {
+                accountId,
+                accessToken
+            });
         }
+
         [Authorize]
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
@@ -85,6 +102,7 @@ namespace AccountService.API.Controllers
 
             return Ok(response);
         }
+
         [Authorize]
         [HttpGet("{id:guid}/status")]
         public async Task<IActionResult> GetStatus(Guid id, CancellationToken ct)

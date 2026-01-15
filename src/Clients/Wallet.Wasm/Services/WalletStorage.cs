@@ -10,6 +10,9 @@ public class WalletStorage
     private const string TokensStorageKey = "my_wallet_tokens";
     private const string AccountIdStorageKey = "my_wallet_account_id";
 
+    // NEW: store JWT for authorized API calls (e.g. POST /api/tokens)
+    private const string JwtStorageKey = "my_wallet_jwt";
+
     public WalletStorage(ILocalStorageService localStorage)
     {
         _localStorage = localStorage;
@@ -46,11 +49,34 @@ public class WalletStorage
     public async Task LogoutAsync(bool clearTokens = true)
     {
         await ClearAccountIdAsync();
+        await ClearJwtAsync();
 
         if (clearTokens)
         {
             await _localStorage.RemoveItemAsync(TokensStorageKey);
         }
+    }
+
+    // -------------------------
+    // JWT (Auth token for calling backend)
+    // -------------------------
+    public async Task SetJwtAsync(string jwt)
+    {
+        if (string.IsNullOrWhiteSpace(jwt))
+            throw new ArgumentException("JWT cannot be empty.", nameof(jwt));
+
+        await _localStorage.SetItemAsync(JwtStorageKey, jwt);
+    }
+
+    public async Task<string?> GetJwtAsync()
+    {
+        var jwt = await _localStorage.GetItemAsync<string>(JwtStorageKey);
+        return string.IsNullOrWhiteSpace(jwt) ? null : jwt;
+    }
+
+    public async Task ClearJwtAsync()
+    {
+        await _localStorage.RemoveItemAsync(JwtStorageKey);
     }
 
     // -------------------------

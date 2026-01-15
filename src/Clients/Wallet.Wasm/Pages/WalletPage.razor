@@ -27,7 +27,7 @@ else
         {
             <div class="col-md-6 mb-4">
                 <div class="card h-100 shadow-sm">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <span>@token.Type</span>
                         @if (token.IsExpired)
                         {
@@ -38,23 +38,95 @@ else
                             <span class="badge bg-success">Active</span>
                         }
                     </div>
+
                     <div class="card-body">
                         <h5 class="card-title">@token.Issuer</h5>
-                        <p class="card-text text-muted small">
-                            ID: @(token.TokenId.Length > 8 ? token.TokenId.Substring(0, 8) + "..." : token.TokenId)
+                        <p class="card-text text-muted small mb-3">
+                            ID: @ShortId(token.TokenId)
                         </p>
-                        
-                        <h6>Claims:</h6>
-                        <ul class="list-group list-group-flush mb-3">
-                            @foreach (var claim in token.Claims)
+
+                        <h6 class="mb-2">Claims</h6>
+
+                        <div class="list-group mb-3">
+                            @foreach (var claim in token.Claims.OrderBy(c => c.Key))
                             {
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    @claim.Key
-                                    <span class="fw-bold">@claim.Value</span>
-                                </li>
+                                var key = claim.Key;
+                                var value = claim.Value ?? "";
+                                var isLong = value.Length > 120;
+                                var isExpanded = _expandedClaims.Contains((token.TokenId, key));
+
+                                // Hide VC_JWT by default behind a more controlled rendering
+                                if (key == "VC_JWT")
+                                {
+                                    <div class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="fw-semibold">VC_JWT</div>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-secondary" @onclick="() => CopyToClipboard(value)">
+                                                    Copy
+                                                </button>
+                                                <button class="btn btn-outline-primary" @onclick="() => ToggleClaim(token.TokenId, key)">
+                                                    @(isExpanded ? "Hide" : "Show")
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div class="text-muted small mt-2">
+                                            @(isExpanded
+                                                                        ? "Full token shown below."
+                                                                        : $"Preview: {Truncate(value, 60)}")
+                                        </div>
+
+                                        @if (isExpanded)
+                                        {
+                                            <div class="mt-2 p-2 border rounded bg-light">
+                                                <code class="d-block" style="white-space: pre-wrap; word-break: break-word; font-size: .85rem;">
+                                                    @value
+                                                </code>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    continue;
+                                }
+
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-start gap-3">
+                                        <div class="fw-semibold">@key</div>
+
+                                        <div class="text-end">
+                                            @if (!isLong)
+                                            {
+                                                <span class="fw-bold">@value</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="fw-bold">@Truncate(value, 120)</span>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    @if (isLong)
+                                    {
+                                        <div class="d-flex justify-content-end mt-2">
+                                            <button class="btn btn-link btn-sm p-0" @onclick="() => ToggleClaim(token.TokenId, key)">
+                                                @(isExpanded ? "Show less" : "Show more")
+                                            </button>
+                                        </div>
+
+                                        @if (isExpanded)
+                                        {
+                                            <div class="mt-2 p-2 border rounded bg-light">
+                                                <code class="d-block" style="white-space: pre-wrap; word-break: break-word; font-size: .85rem;">
+                                                    @value
+                                                </code>
+                                            </div>
+                                        }
+                                    }
+                                </div>
                             }
-                        </ul>
-                        
+                        </div>
+
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted">Expires: @token.ExpiresAt.ToShortDateString()</small>
                             <div>
@@ -66,7 +138,7 @@ else
                                 </button>
                             </div>
                         </div>
-                        
+
                         @if (_verificationResults.TryGetValue(token.TokenId, out var isValid))
                         {
                             <div class="mt-2 alert @(isValid ? "alert-success" : "alert-danger") py-1 px-2 mb-0">
@@ -84,46 +156,12 @@ else
     private List<LocalWalletToken>? _tokens;
     private Dictionary<string, bool> _verificationResults = new();
 
+    // Track expanded claim values per token+key
+    private readonly HashSet<(string TokenId, string Key)> _expandedClaims = new();
+
     protected override async Task OnInitializedAsync()
     {
-        // Check for query parameters signaling a new token issuance
-        var uri = Nav.ToAbsoluteUri(Nav.Uri);
-        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
-
-        if (query.TryGetValue("action", out var action) && action == "issue_token")
-        {
-            await HandleTokenIssuance(query);
-            
-            // Clear URL to prevent re-issuance on refresh
-            Nav.NavigateTo("/wallet", replace: true);
-            return; // Restart lifecycle implies we might not need to load tokens here if Nav navigates away immediately, but safer to let it flow or return.
-            // Actually Nav.NavigateTo will trigger a new load, so we can stop here.
-        }
-
         _tokens = await WalletService.GetMyTokensAsync();
-    }
-
-    private async Task HandleTokenIssuance(Dictionary<string, Microsoft.Extensions.Primitives.StringValues> queryParams)
-    {
-        var isAdultStr = queryParams["isAdult"];
-        var subId = queryParams["subId"];
-        
-        // Default to false/unknown if missing
-        bool isAdult = bool.TryParse(isAdultStr, out var b) && b;
-
-        var claims = new Dictionary<string, string>
-        {
-            { "IsAdult", isAdult.ToString() },
-            { "SubId", subId.ToString() },
-            { "VerifiedAt", DateTime.UtcNow.ToString("o") }
-        };
-
-        await WalletService.ImportTokenAsync(
-            tokenId: Guid.NewGuid().ToString(),
-            type: "AdultCredential",
-            issuer: "MitID (Signicat)",
-            customClaims: claims
-        );
     }
 
     private void Verify(LocalWalletToken token)
@@ -139,5 +177,25 @@ else
             await WalletService.DeleteTokenAsync(tokenId);
             _tokens = await WalletService.GetMyTokensAsync();
         }
+    }
+
+    private void ToggleClaim(string tokenId, string key)
+    {
+        var tuple = (tokenId, key);
+        if (_expandedClaims.Contains(tuple))
+            _expandedClaims.Remove(tuple);
+        else
+            _expandedClaims.Add(tuple);
+    }
+
+    private static string ShortId(string id)
+        => string.IsNullOrWhiteSpace(id) ? "" : (id.Length > 8 ? id.Substring(0, 8) + "…" : id);
+
+    private static string Truncate(string s, int max)
+        => string.IsNullOrEmpty(s) ? "" : (s.Length <= max ? s : s.Substring(0, max) + "…");
+
+    private async Task CopyToClipboard(string text)
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
     }
 }

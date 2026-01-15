@@ -26,89 +26,106 @@
     }
     else
     {
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">🔞 Voksenindhold (Simulering)</h5>
+                        <p class="text-muted">
+                            Dette er en "ekstern" hjemmeside, der kræver, at du er over 18 år.
+                            Den kigger i din E-Wallet for at se, om du har et gyldigt bevis.
+                        </p>
 
-    <div class="row g-3">
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-body">
+                        <ul class="mb-3">
+                            <li>Har bevis: <strong>@(_token != null ? "Ja" : "Nej")</strong></li>
+                            <li>Er 18+ (ifølge bevis): <strong>@(ClientSideAdult ? "Ja" : "Nej")</strong></li>
+                        </ul>
 
-                    <h5 class="card-title">🔞 Voksenindhold (Simulering)</h5>
-                    <p class="text-muted">
-                        Dette er en "ekstern" hjemmeside, der kræver, at du er over 18 år.
-                        Den kigger i din E-Wallet for at se, om du har et gyldigt bevis.
-                    </p>
+                        @if (ClientSideAdult)
+                        {
+                            <div class="alert alert-success">
+                                <h4>🎉 Adgang Godkendt!</h4>
+                                <p>Du har bevist din alder med din wallet uden at afsløre dit CPR-nummer.</p>
+                                <p><em>(Her ville du normalt blive sendt videre til indholdet...)</em></p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-danger">
+                                <h4>⛔ Adgang Nægtet</h4>
+                                <p>Du har ikke et gyldigt 18+ bevis i din wallet.</p>
+                            </div>
+                        }
 
-                    <ul class="mb-3">
-                        <li>Har bevis: <strong>@(_token != null ? "Ja" : "Nej")</strong></li>
-                        <li>Er 18+ (ifølge bevis): <strong>@(ClientSideAdult ? "Ja" : "Nej")</strong></li>
-                    </ul>
+                        <details class="mt-3">
+                            <summary>Vis pseudo-kode (JS)</summary>
+                            <pre class="small mt-2"><code>@ClientSideJsExample</code></pre>
+                        </details>
+                    </div>
+                </div>
+            </div>
 
-                    @if (ClientSideAdult)
-                    {
-                        <div class="alert alert-success">
-                            <h4>🎉 Adgang Godkendt!</h4>
-                            <p>Du har bevist din alder med din wallet uden at afsløre dit CPR-nummer.</p>
-                            <p><em>(Her ville du normalt blive sendt videre til indholdet...)</em></p>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="alert alert-danger">
-                            <h4>⛔ Adgang Nægtet</h4>
-                            <p>Du har ikke et gyldigt 18+ bevis i din wallet.</p>
-                        </div>
-                    }
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Server-side verification</h5>
+                        <p class="text-muted">
+                            Tjek via backend API. Bruges typisk når et website vil validere uden at stole på client-side.
+                        </p>
 
-                    <details class="mt-3">
-                        <summary>Vis pseudo-kode (JS)</summary>
-                        <pre class="small mt-2"><code>@ClientSideJsExample</code></pre>
-                    </details>
+                        <button class="btn btn-secondary" @onclick="VerifyServerSideAsync" disabled="@_serverBusy">
+                            @(_serverBusy ? "Verifierer..." : "Kør server-side check")
+                        </button>
+
+                        @if (_serverResult is not null)
+                        {
+                            <div class="alert mt-3 @(_serverResult.IsVerified ? "alert-success" : "alert-danger")">
+                                @if (_serverResult.IsVerified)
+                                {
+                                    <div class="fw-bold">MitID/VC godkendt ✅</div>
+                                    <div class="small text-muted">
+                                        Issuer: @_serverResult.IssuerDid ?? "ukendt" <br />
+                                        Tid: @_serverResult.VerifiedAt.ToString("u")
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="fw-bold">Ikke godkendt ❌</div>
+                                    <div class="small">
+                                        @_serverResult.FailureReason ?? "ukendt årsag"
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else if (_serverAutoTried)
+                        {
+                            <div class="alert mt-3 alert-warning">
+                                Server-side check blev forsøgt, men gav intet svar.
+                            </div>
+                        }
+
+                        <details class="mt-3">
+                            <summary>Vis pseudo-kode (C#)</summary>
+                            <pre class="small mt-2"><code>@ServerSideCSharpExample</code></pre>
+                        </details>
+                    </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Server-side verification</h5>
-                    <p class="text-muted">
-                        Tjek via backend API. Bruges typisk når et website vil validere uden at stole på client-side.
-                    </p>
-
-                    <button class="btn btn-secondary" @onclick="VerifyServerSideAsync" disabled="_serverBusy">
-                        @(_serverBusy ? "Verifierer..." : "Kør server-side check")
-                    </button>
-
-                    @if (_serverMessage is not null)
-                    {
-                        <div class="alert mt-3 @(_serverIsAdult ? "alert-success" : "alert-danger")">
-                            @_serverMessage
-                        </div>
-                    }
-
-                    <details class="mt-3">
-                        <summary>Vis pseudo-kode (C#)</summary>
-                        <pre class="small mt-2"><code>@ServerSideCSharpExample</code></pre>
-                    </details>
-                </div>
-            </div>
-        </div>
-    </div>
     }
 </div>
 
 @code {
     private LocalWalletToken? _token;
-    private bool _anchorMatches;
     private bool _isLoading = true;
 
     private bool _serverBusy;
-    private bool _serverIsAdult;
-    private string? _serverMessage;
+    private bool _serverAutoTried;
+    private AdultVerificationResultDto? _serverResult;
 
-    private bool ClientSideAdult 
+    private bool ClientSideAdult
     {
-        get 
+        get
         {
             if (_token is null) return false;
             if (_token.Claims.TryGetValue("IsAdult", out var isAdultStr))
@@ -121,42 +138,54 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Get the specific AdultCredential we just issued
         var tokens = await WalletService.GetMyTokensAsync();
         _token = tokens.FirstOrDefault(t => t.Type == "AdultCredential");
-        
-        // Mock check for anchor match (in real app, this verifies signature against chain)
-        _anchorMatches = _token is not null; 
         _isLoading = false;
+
+        // ✅ Auto-run server-side verify så højre side “siger det” direkte
+        if (_token is not null)
+        {
+            await VerifyServerSideAsync(auto: true);
+        }
     }
 
-    private async Task VerifyServerSideAsync()
+    private async Task VerifyServerSideAsync() => await VerifyServerSideAsync(auto: false);
+
+    private async Task VerifyServerSideAsync(bool auto)
     {
         if (_token is null) return;
 
         _serverBusy = true;
-        _serverMessage = null;
+        _serverResult = null;
 
         try
         {
-            // Hvis jeres backend bruger tokenId (typisk), så kør sådan her:
-            var result = await AdultClient.VerifyAdultAsync(_token.TokenId);
-
-            if (result is null)
+            if (!_token.Claims.TryGetValue("VC_JWT", out var vcJwt) || string.IsNullOrWhiteSpace(vcJwt))
             {
-                _serverIsAdult = false;
-                _serverMessage = "Server-side verifikation fejlede (intet svar fra API).";
+                _serverResult = new AdultVerificationResultDto
+                {
+                    IsVerified = false,
+                    IsAdult = false,
+                    FailureReason = "Token mangler VC_JWT claim (kan ikke validere).",
+                    VerifiedAt = DateTime.UtcNow
+                };
                 return;
             }
 
-            _serverIsAdult = result.IsAdult;
-            _serverMessage = _serverIsAdult
-                ? "Server-side: Brugeren er verificeret som 18+."
-                : "Server-side: Brugeren er ikke 18+ (eller token er ugyldig/udløbet).";
+            var result = await AdultClient.VerifyAdultAsync(vcJwt);
+
+            _serverResult = result ?? new AdultVerificationResultDto
+            {
+                IsVerified = false,
+                IsAdult = false,
+                FailureReason = "Intet svar fra API.",
+                VerifiedAt = DateTime.UtcNow
+            };
         }
         finally
         {
             _serverBusy = false;
+            if (auto) _serverAutoTried = true;
         }
     }
 
@@ -164,26 +193,9 @@
 @"// Client-side (browser):
 // 1) Læs token fra localStorage (på wallet-domænet)
 // 2) Check expiry + type
-// 3) Hash rawToken og sammenlign med anchorHashOnChain
-const tokenJson = localStorage.getItem('wallet.local.token.v1');
-if (!tokenJson) return { isAdult: false };
-
-const token = JSON.parse(tokenJson);
-const isActive = new Date(token.expiresAt) > new Date();
-const isAdultType = token.type === 'AgeOver18';
-
-const buf = new TextEncoder().encode(token.rawToken);
-const hash = await crypto.subtle.digest('SHA-256', buf);
-// convert hash -> hex og sammenlign med token.anchorHashOnChain";
+// 3) Hash rawToken og sammenlign med anchorHashOnChain";
 
     private const string ServerSideCSharpExample =
-@"// Server-side (kundens backend):
-// Send tokenId til jeres backend:
-var response = await http.PostAsJsonAsync(
-    '/api/adult/verify',
-    new { tokenId }
-);
-
-var result = await response.Content.ReadFromJsonAsync<AdultVerificationResultDto>();
-if (result?.IsAdult == true) { /* allow adult content */ }";
+@"// Server-side:
+// POST /api/validation/verify { vcJwt: '...' }";
 }
