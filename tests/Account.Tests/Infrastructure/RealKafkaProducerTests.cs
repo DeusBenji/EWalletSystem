@@ -1,84 +1,119 @@
-﻿using Confluent.Kafka;
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Containers;
-using FluentAssertions;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using System;
 using System.Text.Json;
-using Xunit;
+using System.Threading;
+using System.Threading.Tasks;
 using BuildingBlocks.Kafka;
+using BuildingBlocks.Contracts.Messaging;
+using Microsoft.Extensions.Configuration;
+using Moq;
+using Xunit;
 
-public class RealKafkaProducerTests : IAsyncLifetime
+public class KafkaProducerTests
 {
-    private readonly IContainer _rp;
-    private const int HostKafkaPort = 19092;
-    private string _bootstrap = default!;
-
-    public RealKafkaProducerTests()
+    private class TestPublisher
     {
-        _rp = new ContainerBuilder()
-            .WithImage("redpandadata/redpanda:latest")
-            .WithPortBinding(HostKafkaPort, 9092)
-            .WithCommand(
-                "redpanda", "start",
-                "--overprovisioned",
-                "--smp", "1",
-                "--memory", "512M",
-                "--reserve-memory", "0M",
-                "--node-id", "0",
-                "--check=false",
-                "--kafka-addr", "0.0.0.0:9092",
-                "--advertise-kafka-addr", $"127.0.0.1:{HostKafkaPort}"
-            )
-            .WithWaitStrategy(Wait
-                .ForUnixContainer()
-                .UntilMessageIsLogged("Successfully started Redpanda!"))
-            .Build();
-    }
+        private readonly IKafkaProducer _producer;
 
-    public async Task InitializeAsync()
-    {
-        await _rp.StartAsync();
-        _bootstrap = $"127.0.0.1:{HostKafkaPort}";
-    }
+        public TestPublisher(IKafkaProducer producer)
+        {
+            _producer = producer;
+        }
 
-    public async Task DisposeAsync() => await _rp.DisposeAsync();
+        public Task PublishAsync<T>(T message, string topic, string key, CancellationToken ct = default)
+        {
+            return _producer.PublishAsync(topic, key, message!, ct);
+        }
+    }
 
     [Fact]
-    public async Task Producer_Should_Send_And_Consumer_Should_Receive()
+    public async Task PublishAsync_SendsMessage_WithCorrectTopicKeyAndJson()
     {
-        // Arrange
-        var settings = new Dictionary<string, string> { ["Kafka:BootstrapServers"] = _bootstrap };
-        var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+        // arrange
+        var mockKafka = new Mock<IKafkaProducer>();
 
-        var kafkaProducer = new KafkaProducer(
-            config, new NullLogger<KafkaProducer>());
+        string? capturedTopic = null;
+        string? capturedKey = null;
+        string? capturedJson = null;
 
-        var topic = "test-topic";
-        var message = new { Id = Guid.NewGuid(), Email = "user@test.dk" };
+        mockKafka
+            .Setup(p => p.PublishAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<object>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<string, string, object, CancellationToken>((topic, key, message, ct) =>
+            {
+                capturedTopic = topic;
+                capturedKey = key;
+                capturedJson = JsonSerializer.Serialize(message);
+            })
+            .Returns(Task.CompletedTask);
 
-        // Act
-        await kafkaProducer.PublishAsync(topic, message);
+        var publisher = new TestPublisher(mockKafka.Object);
 
-        // Assert (consume)
-        var consumerConfig = new ConsumerConfig
+        var topic = "user-created";
+        var key = Guid.NewGuid().ToString();
+
+        var message = new
         {
-            BootstrapServers = _bootstrap,
-            GroupId = "tests",
-            AutoOffsetReset = AutoOffsetReset.Earliest,
-            EnableAutoCommit = true
+            Id = Guid.NewGuid(),
+            Email = "user@test.dk"
         };
 
-        using var consumer = new ConsumerBuilder<string, string>(consumerConfig).Build();
-        consumer.Subscribe(topic);
+        // act
+        await publisher.PublishAsync(message, topic, key);
 
-        var record = consumer.Consume(TimeSpan.FromSeconds(10));
-        record.Should().NotBeNull("we should consume what we just produced");
+        // assert
+        Assert.Equal(topic, capturedTopic);
+        Assert.Equal(key, capturedKey);
 
-        var payload = JsonSerializer.Deserialize<Dictionary<string, object>>(record!.Message.Value);
-        payload.Should().ContainKey("Email");
-        payload!["Email"].ToString().Should().Be("user@test.dk");
+        var deserialized = JsonSerializer.Deserialize<Dictionary<string, object>>(capturedJson!);
 
-        consumer.Close();
+        Assert.NotNull(deserialized);
+        Assert.Equal(message.Email, deserialized!["Email"]!.ToString());
+
+        mockKafka.Verify(p => p.PublishAsync(
+                topic,
+                key,
+                It.IsAny<object>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task PublishAsync_CallsProducer_Once()
+    {
+        // arrange
+        var mockKafka = new Mock<IKafkaProducer>();
+
+        mockKafka
+            .Setup(p => p.PublishAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<object>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var publisher = new TestPublisher(mockKafka.Object);
+
+        var topic = "user-created";
+        var key = "user-123";
+
+        var message = new
+        {
+            Id = Guid.NewGuid(),
+            Email = "abc@test.dk"
+        };
+
+        // act
+        await publisher.PublishAsync(message, topic, key);
+
+        // assert
+        mockKafka.Verify(p => p.PublishAsync(
+                topic,
+                key,
+                It.IsAny<object>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

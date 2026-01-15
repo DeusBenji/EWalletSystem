@@ -52,14 +52,16 @@ namespace AccountSerrvicesTest.API
                 {
                     ["Jwt:Issuer"] = "test-issuer",
                     ["Jwt:Audience"] = "test-audience",
-                    ["Jwt:SigningKey"] = "THIS_IS_A_TEST_SIGNING_KEY_32_CHARS_MIN!",
+
+                    // ✅ FIX: Din JwtTokenService leder efter Jwt:Key – ikke Jwt:SigningKey
+                    ["Jwt:Key"] = "THIS_IS_A_TEST_SIGNING_KEY_32_CHARS_MIN!",
+
                     ["Jwt:ExpiryMinutes"] = "60"
                 })
                 .Build();
 
             var jwtTokenService = new JwtTokenService(config);
 
-            // ✅ FIX: 4. parameter med
             _sut = new AccountController(
                 _serviceMock.Object,
                 _loggerMock.Object,
@@ -93,7 +95,7 @@ namespace AccountSerrvicesTest.API
                 Id = Guid.NewGuid(),
                 Email = request.Email,
             };
-             
+
             _serviceMock
                 .Setup(s => s.RegisterAccountAsync(It.IsAny<RegisterAccountDto>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(registeredAccount);
