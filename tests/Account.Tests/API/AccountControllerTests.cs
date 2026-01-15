@@ -93,7 +93,7 @@ namespace AccountSerrvicesTest.API
                 Id = Guid.NewGuid(),
                 Email = request.Email,
             };
-
+             
             _serviceMock
                 .Setup(s => s.RegisterAccountAsync(It.IsAny<RegisterAccountDto>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(registeredAccount);
