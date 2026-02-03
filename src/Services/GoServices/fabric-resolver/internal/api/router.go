@@ -14,7 +14,7 @@ import (
 )
 
 // NewRouter creates and configures the HTTP router
-func NewRouter(fabricClient fabric.FabricClient) *mux.Router {
+func NewRouter(ledgerClient fabric.LedgerClient) *mux.Router {
 	r := mux.NewRouter()
 
 	// Middleware
@@ -25,16 +25,16 @@ func NewRouter(fabricClient fabric.FabricClient) *mux.Router {
 	r.HandleFunc("/health", healthHandler).Methods("GET")
 
 	// Stats endpoint for debugging
-	r.HandleFunc("/stats", statsHandler(fabricClient)).Methods("GET")
+	r.HandleFunc("/stats", statsHandler(ledgerClient)).Methods("GET")
 
 	// Anchor handlers
-	anchorHandler := handlers.NewAnchorHandler(fabricClient)
+	anchorHandler := handlers.NewAnchorHandler(ledgerClient)
 	r.HandleFunc("/anchors", anchorHandler.CreateAnchor).Methods("POST")
 	r.HandleFunc("/anchors/{hash}", anchorHandler.GetAnchor).Methods("GET")
 	r.HandleFunc("/anchors/{hash}/verify", anchorHandler.VerifyAnchor).Methods("GET")
 
 	// DID handlers
-	didHandler := handlers.NewDidHandler(fabricClient)
+	didHandler := handlers.NewDidHandler(ledgerClient)
 	r.HandleFunc("/dids", didHandler.CreateDid).Methods("POST")
 	r.HandleFunc("/dids/{did:.*}", didHandler.ResolveDid).Methods("GET")
 
@@ -89,9 +89,9 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // statsHandler returns statistics from the Fabric client (for debugging)
-func statsHandler(fabricClient fabric.FabricClient) http.HandlerFunc {
+func statsHandler(ledgerClient fabric.LedgerClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		stats := fabricClient.GetStats()
+		stats := ledgerClient.GetStats()
 		stats["timestamp"] = time.Now().UTC().Format(time.RFC3339)
 
 		w.Header().Set("Content-Type", "application/json")

@@ -1,0 +1,25 @@
+=== RUN   TestNewFileLedgerClient
+2026/02/02 21:06:08 FileLedgerClient initialized at C:\Users\Admin\AppData\Local\Temp\TestNewFileLedgerClient137244965\001\ledger.json
+--- PASS: TestNewFileLedgerClient (0.05s)
+=== RUN   TestPersistenceAcrossRestart
+2026/02/02 21:06:08 FileLedgerClient initialized at C:\Users\Admin\AppData\Local\Temp\TestPersistenceAcrossRestart2605928448\001\ledger.json
+2026/02/02 21:06:08 Anchor created: persist-hash (block: 1)
+2026/02/02 21:06:08 FileLedgerClient initialized at C:\Users\Admin\AppData\Local\Temp\TestPersistenceAcrossRestart2605928448\001\ledger.json
+--- PASS: TestPersistenceAcrossRestart (0.03s)
+=== RUN   TestConcurrency
+2026/02/02 21:06:08 FileLedgerClient initialized at C:\Users\Admin\AppData\Local\Temp\TestConcurrency3611039847\001\ledger.json
+2026/02/02 21:06:08 Anchor created: hash-18 (block: 4)
+2026/02/02 21:06:08 Anchor created: hash-98 (block: 97)
+2026/02/02 21:06:08 Anchor created: hash-17 (block: 100)
+    client_test.go:91: Concurrency writes failed: failed to persist anchor: failed to rename tmp file: rename C:\Users\Admin\AppData\Local\Temp\TestConcurrency3611039847\001\ledger.json.tmp C:\Users\Admin\AppData\Local\Temp\TestConcurrency3611039847\001\ledger.json: Processen kan ikke få adgang til filen, da den bruges af en anden proces.
+--- FAIL: TestConcurrency (0.07s)
+=== RUN   TestIdempotency
+2026/02/02 21:06:08 FileLedgerClient initialized at C:\Users\Admin\AppData\Local\Temp\TestIdempotency1312806493\001\ledger.json
+2026/02/02 21:06:08 Anchor created: idempotent-hash (block: 1)
+--- PASS: TestIdempotency (0.02s)
+=== RUN   TestGetAnchorNotFound
+2026/02/02 21:06:08 FileLedgerClient initialized at C:\Users\Admin\AppData\Local\Temp\TestGetAnchorNotFound1102761957\001\ledger.json
+--- PASS: TestGetAnchorNotFound (0.00s)
+FAIL
+exit status 1
+FAIL	fabric-resolver/internal/infrastructure/fabric	0.732s

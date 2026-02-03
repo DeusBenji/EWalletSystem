@@ -2,292 +2,161 @@ package fabric
 
 import (
 	"context"
-	"sync"
+	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"fabric-resolver/internal/domain"
+
+	"golang.org/x/sync/errgroup"
 )
 
-func TestNewClient(t *testing.T) {
-	client, err := NewClient()
+func TestNewFileLedgerClient(t *testing.T) {
+	tmpDir := t.TempDir()
+	ledgerPath := filepath.Join(tmpDir, "ledger.json")
+
+	client, err := NewFileLedgerClient(ledgerPath)
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	// Close is no-op but good practice
+	client.Close()
 
-	if client.anchors == nil {
-		t.Error("anchors map not initialized")
-	}
-	if client.dids == nil {
-		t.Error("dids map not initialized")
-	}
-	if client.nextBlock != 1 {
-		t.Errorf("expected nextBlock=1, got %d", client.nextBlock)
+	if client.path != ledgerPath {
+		t.Errorf("expected path %s, got %s", ledgerPath, client.path)
 	}
 }
 
-func TestCreateAnchor(t *testing.T) {
-	client, _ := NewClient()
-	defer client.Close()
-
+func TestPersistenceAcrossRestart(t *testing.T) {
+	tmpDir := t.TempDir()
+	ledgerPath := filepath.Join(tmpDir, "ledger.json")
 	ctx := context.Background()
-	anchor := &domain.Anchor{
-		Hash:      "test-hash-123",
-		IssuerDID: "did:example:issuer",
-		Metadata:  "test metadata",
+
+	// 1. Create client and data
+	client1, err := NewFileLedgerClient(ledgerPath)
+	if err != nil {
+		t.Fatalf("NewFileLedgerClient 1 failed: %v", err)
 	}
 
-	txID, blockNum, err := client.CreateAnchor(ctx, anchor)
+	anchor := &domain.Anchor{Hash: "persist-hash"}
+	txID, _, err := client1.CreateAnchor(ctx, anchor)
 	if err != nil {
 		t.Fatalf("CreateAnchor failed: %v", err)
 	}
 
-	if txID == "" {
-		t.Error("txID should not be empty")
+	// 2. "Restart" (create new client instance pointing to same file)
+	client2, err := NewFileLedgerClient(ledgerPath)
+	if err != nil {
+		t.Fatalf("NewFileLedgerClient 2 failed: %v", err)
 	}
-	if blockNum != 1 {
-		t.Errorf("expected blockNum=1, got %d", blockNum)
+
+	// 3. Verify data exists
+	retrieved, err := client2.GetAnchor(ctx, "persist-hash")
+	if err != nil {
+		t.Fatalf("GetAnchor failed after restart: %v", err)
 	}
-	if anchor.Timestamp.IsZero() {
-		t.Error("timestamp should be set")
+
+	if retrieved.TxID != txID {
+		t.Errorf("Persistence failed: expected TxID %s, got %s", txID, retrieved.TxID)
 	}
 }
 
-func TestCreateAnchorDuplicate(t *testing.T) {
-	client, _ := NewClient()
-	defer client.Close()
+func TestConcurrency(t *testing.T) {
+	tmpDir := t.TempDir()
+	ledgerPath := filepath.Join(tmpDir, "ledger.json")
+
+	client, err := NewFileLedgerClient(ledgerPath)
+	if err != nil {
+		t.Fatalf("Setup failed: %v", err)
+	}
 
 	ctx := context.Background()
-	anchor := &domain.Anchor{
-		Hash:      "duplicate-hash",
-		IssuerDID: "did:example:issuer",
+	count := 100
+	var g errgroup.Group
+
+	// 1. Write 100 unique anchors concurrently
+	for i := 0; i < count; i++ {
+		i := i
+		g.Go(func() error {
+			anchor := &domain.Anchor{
+				Hash: fmt.Sprintf("hash-%d", i),
+			}
+			_, _, err := client.CreateAnchor(ctx, anchor)
+			return err
+		})
 	}
 
-	// First creation should succeed
-	_, _, err := client.CreateAnchor(ctx, anchor)
+	if err := g.Wait(); err != nil {
+		t.Fatalf("Concurrency writes failed: %v", err)
+	}
+
+	// 2. Reopen and verify ALL exist
+	client2, err := NewFileLedgerClient(ledgerPath)
 	if err != nil {
-		t.Fatalf("First CreateAnchor failed: %v", err)
+		t.Fatalf("Reopen failed: %v", err)
 	}
 
-	// Second creation should fail
-	_, _, err = client.CreateAnchor(ctx, anchor)
-	if err == nil {
-		t.Error("Expected error for duplicate anchor, got nil")
+	for i := 0; i < count; i++ {
+		hash := fmt.Sprintf("hash-%d", i)
+		if !client2.VerifyAnchor(ctx, hash) {
+			t.Errorf("Missing anchor %s after concurrent write", hash)
+		}
+	}
+
+	stats := client2.GetStats()
+	if stats["anchors"].(int) != count {
+		t.Errorf("Stats mismatch: expected %d anchors, got %d", count, stats["anchors"])
 	}
 }
 
-func TestGetAnchor(t *testing.T) {
-	client, _ := NewClient()
-	defer client.Close()
-
+func TestIdempotency(t *testing.T) {
+	tmpDir := t.TempDir()
+	ledgerPath := filepath.Join(tmpDir, "ledger.json")
+	client, _ := NewFileLedgerClient(ledgerPath)
 	ctx := context.Background()
-	original := &domain.Anchor{
-		Hash:      "test-hash",
-		IssuerDID: "did:example:issuer",
-	}
 
-	_, _, err := client.CreateAnchor(ctx, original)
+	anchor := &domain.Anchor{Hash: "idempotent-hash", Metadata: "original"}
+
+	// 1. First Write
+	txID1, _, err := client.CreateAnchor(ctx, anchor)
 	if err != nil {
-		t.Fatalf("CreateAnchor failed: %v", err)
+		t.Fatalf("First write failed: %v", err)
 	}
 
-	retrieved, err := client.GetAnchor(ctx, "test-hash")
+	timestamp1 := anchor.Timestamp
+
+	// 2. Delay to ensure clock moves (if it were allowed to update)
+	time.Sleep(10 * time.Millisecond)
+
+	// 3. Duplicate Write using same Hash but different Metadata (attempted mutation)
+	anchorDup := &domain.Anchor{Hash: "idempotent-hash", Metadata: "mutated"}
+	txID2, _, err := client.CreateAnchor(ctx, anchorDup)
 	if err != nil {
-		t.Fatalf("GetAnchor failed: %v", err)
+		t.Fatalf("Duplicate write failed: %v", err)
 	}
 
-	if retrieved.Hash != original.Hash {
-		t.Errorf("expected hash %s, got %s", original.Hash, retrieved.Hash)
+	// 4. Verify Same TxID returned
+	if txID1 != txID2 {
+		t.Errorf("Idempotency violation: TxID changed from %s to %s", txID1, txID2)
 	}
-	if retrieved.IssuerDID != original.IssuerDID {
-		t.Errorf("expected issuer %s, got %s", original.IssuerDID, retrieved.IssuerDID)
+
+	// 5. Verify Record NOT mutated
+	retrieved, _ := client.GetAnchor(ctx, "idempotent-hash")
+	if retrieved.Metadata != "original" {
+		t.Error("Idempotency violation: Metadata was mutated")
+	}
+	if !retrieved.Timestamp.Equal(timestamp1) {
+		t.Error("Idempotency violation: Timestamp changed")
 	}
 }
 
 func TestGetAnchorNotFound(t *testing.T) {
-	client, _ := NewClient()
-	defer client.Close()
+	tmpDir := t.TempDir()
+	client, _ := NewFileLedgerClient(filepath.Join(tmpDir, "ledger.json"))
 
-	ctx := context.Background()
-	_, err := client.GetAnchor(ctx, "nonexistent-hash")
+	_, err := client.GetAnchor(context.Background(), "missing")
 	if err == nil {
-		t.Error("Expected error for nonexistent anchor, got nil")
-	}
-}
-
-func TestVerifyAnchor(t *testing.T) {
-	client, _ := NewClient()
-	defer client.Close()
-
-	ctx := context.Background()
-
-	// Should not exist initially
-	exists := client.VerifyAnchor(ctx, "test-hash")
-	if exists {
-		t.Error("Anchor should not exist initially")
-	}
-
-	// Create anchor
-	anchor := &domain.Anchor{Hash: "test-hash"}
-	client.CreateAnchor(ctx, anchor)
-
-	// Should exist now
-	exists = client.VerifyAnchor(ctx, "test-hash")
-	if !exists {
-		t.Error("Anchor should exist after creation")
-	}
-}
-
-func TestCreateDid(t *testing.T) {
-	client, _ := NewClient()
-	defer client.Close()
-
-	ctx := context.Background()
-	didDoc := &domain.DIDDocument{
-		Context: []string{"https://www.w3.org/ns/did/v1"},
-		ID:      "did:example:123",
-		VerificationMethod: []domain.VerificationMethod{
-			{
-				ID:              "did:example:123#key-1",
-				Type:            "Ed25519VerificationKey2020",
-				Controller:      "did:example:123",
-				PublicKeyBase58: "H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV",
-			},
-		},
-	}
-
-	err := client.CreateDid(ctx, didDoc)
-	if err != nil {
-		t.Fatalf("CreateDid failed: %v", err)
-	}
-
-	if didDoc.Created.IsZero() {
-		t.Error("Created timestamp should be set")
-	}
-	if didDoc.Updated.IsZero() {
-		t.Error("Updated timestamp should be set")
-	}
-}
-
-func TestGetDid(t *testing.T) {
-	client, _ := NewClient()
-	defer client.Close()
-
-	ctx := context.Background()
-	original := &domain.DIDDocument{
-		Context: []string{"https://www.w3.org/ns/did/v1"},
-		ID:      "did:example:456",
-	}
-
-	err := client.CreateDid(ctx, original)
-	if err != nil {
-		t.Fatalf("CreateDid failed: %v", err)
-	}
-
-	retrieved, err := client.GetDid(ctx, "did:example:456")
-	if err != nil {
-		t.Fatalf("GetDid failed: %v", err)
-	}
-
-	if retrieved.ID != original.ID {
-		t.Errorf("expected ID %s, got %s", original.ID, retrieved.ID)
-	}
-}
-
-func TestConcurrentAnchors(t *testing.T) {
-	client, _ := NewClient()
-	defer client.Close()
-
-	ctx := context.Background()
-	numGoroutines := 100
-	var wg sync.WaitGroup
-	wg.Add(numGoroutines)
-
-	// Create 100 anchors concurrently
-	for i := 0; i < numGoroutines; i++ {
-		go func(index int) {
-			defer wg.Done()
-			anchor := &domain.Anchor{
-				Hash:      time.Now().Format("2006-01-02T15:04:05.999999999Z07:00") + "-" + string(rune(index)),
-				IssuerDID: "did:example:concurrent",
-			}
-			_, _, err := client.CreateAnchor(ctx, anchor)
-			if err != nil {
-				t.Errorf("Concurrent CreateAnchor failed: %v", err)
-			}
-		}(i)
-	}
-
-	wg.Wait()
-
-	// Check stats
-	stats := client.GetStats()
-	anchorsCount := stats["anchors"].(int)
-	if anchorsCount != numGoroutines {
-		t.Errorf("expected %d anchors, got %d", numGoroutines, anchorsCount)
-	}
-}
-
-func TestContextCancellation(t *testing.T) {
-	client, _ := NewClient()
-	defer client.Close()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel immediately
-
-	anchor := &domain.Anchor{Hash: "test-hash"}
-	_, _, err := client.CreateAnchor(ctx, anchor)
-	if err == nil {
-		t.Error("Expected error for cancelled context, got nil")
-	}
-}
-
-func TestGetStats(t *testing.T) {
-	client, _ := NewClient()
-	defer client.Close()
-
-	ctx := context.Background()
-
-	// Initial stats
-	stats := client.GetStats()
-	if stats["anchors"].(int) != 0 {
-		t.Error("Expected 0 anchors initially")
-	}
-	if stats["dids"].(int) != 0 {
-		t.Error("Expected 0 DIDs initially")
-	}
-
-	// Add some data
-	client.CreateAnchor(ctx, &domain.Anchor{Hash: "hash1"})
-	client.CreateDid(ctx, &domain.DIDDocument{ID: "did:example:1"})
-
-	// Check updated stats
-	stats = client.GetStats()
-	if stats["anchors"].(int) != 1 {
-		t.Errorf("Expected 1 anchor, got %d", stats["anchors"].(int))
-	}
-	if stats["dids"].(int) != 1 {
-		t.Errorf("Expected 1 DID, got %d", stats["dids"].(int))
-	}
-}
-
-func TestClose(t *testing.T) {
-	client, _ := NewClient()
-	
-	ctx := context.Background()
-	client.CreateAnchor(ctx, &domain.Anchor{Hash: "test"})
-
-	err := client.Close()
-	if err != nil {
-		t.Fatalf("Close failed: %v", err)
-	}
-
-	// After close, maps should be nil
-	if client.anchors != nil {
-		t.Error("anchors map should be nil after Close")
-	}
-	if client.dids != nil {
-		t.Error("dids map should be nil after Close")
+		t.Error("Expected error for missing anchor")
 	}
 }

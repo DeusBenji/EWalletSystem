@@ -22,15 +22,16 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Initialize Fabric client
-	fabricClient, err := fabric.NewClient()
+	// Initialize Ledger client
+	ledgerConfig := fabric.LoadConfigFromEnv()
+	ledgerClient, err := fabric.NewLedgerClient(ledgerConfig)
 	if err != nil {
-		log.Fatalf("Failed to initialize Fabric client: %v", err)
+		log.Fatalf("Failed to initialize Ledger client: %v", err)
 	}
-	defer fabricClient.Close()
+	defer ledgerClient.Close()
 
 	// Setup HTTP server
-	router := api.NewRouter(fabricClient)
+	router := api.NewRouter(ledgerClient)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),

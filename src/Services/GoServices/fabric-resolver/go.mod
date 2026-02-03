@@ -1,10 +1,11 @@
 module fabric-resolver
 
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/gorilla/mux v1.8.1
 	github.com/prometheus/client_golang v1.23.2
+	golang.org/x/sync v0.19.0
 )
 
 require (

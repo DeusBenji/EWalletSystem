@@ -12,13 +12,12 @@ import (
 )
 
 type DidHandler struct {
-	fabricClient fabric.FabricClient // Brug interface
+	ledgerClient fabric.LedgerClient // Brug interface
 }
 
-func NewDidHandler(fabricClient fabric.FabricClient) *DidHandler {
-	return &DidHandler{
-		fabricClient: fabricClient,
-	}
+func NewDidHandler(ledgerClient fabric.LedgerClient) *DidHandler {
+	return &DidHandler{ledgerClient: ledgerClient}
+
 }
 
 type CreateDidRequest struct {
@@ -84,7 +83,7 @@ func (h *DidHandler) CreateDid(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Store on Fabric
-	if err := h.fabricClient.CreateDid(r.Context(), didDoc); err != nil {
+	if err := h.ledgerClient.CreateDid(r.Context(), didDoc); err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to create DID: "+err.Error())
 		return
 	}
@@ -109,7 +108,7 @@ func (h *DidHandler) ResolveDid(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Query from Fabric
-	didDoc, err := h.fabricClient.GetDid(r.Context(), did)
+	didDoc, err := h.ledgerClient.GetDid(r.Context(), did)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "DID not found")
 		return

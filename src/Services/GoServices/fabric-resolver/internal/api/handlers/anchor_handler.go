@@ -11,12 +11,12 @@ import (
 )
 
 type AnchorHandler struct {
-	fabricClient fabric.FabricClient // Brug interface i stedet for konkret type
+	ledgerClient fabric.LedgerClient
 }
 
-func NewAnchorHandler(fabricClient fabric.FabricClient) *AnchorHandler {
+func NewAnchorHandler(ledgerClient fabric.LedgerClient) *AnchorHandler {
 	return &AnchorHandler{
-		fabricClient: fabricClient,
+		ledgerClient: ledgerClient,
 	}
 }
 
@@ -54,7 +54,7 @@ func (h *AnchorHandler) CreateAnchor(w http.ResponseWriter, r *http.Request) {
 		Metadata:  req.Metadata,
 	}
 
-	txID, blockNumber, err := h.fabricClient.CreateAnchor(r.Context(), anchor)
+	txID, blockNumber, err := h.ledgerClient.CreateAnchor(r.Context(), anchor)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to create anchor: "+err.Error())
 		return
@@ -82,7 +82,7 @@ func (h *AnchorHandler) GetAnchor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	anchor, err := h.fabricClient.GetAnchor(r.Context(), hash)
+	anchor, err := h.ledgerClient.GetAnchor(r.Context(), hash)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "Anchor not found")
 		return
@@ -111,7 +111,7 @@ func (h *AnchorHandler) VerifyAnchor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// VerifyAnchor returnerer nu bare bool (ikke error)
-	exists := h.fabricClient.VerifyAnchor(r.Context(), hash)
+	exists := h.ledgerClient.VerifyAnchor(r.Context(), hash)
 
 	resp := map[string]interface{}{
 		"hash":   hash,
