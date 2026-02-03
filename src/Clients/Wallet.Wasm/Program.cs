@@ -33,7 +33,7 @@ builder.Services.AddScoped(sp =>
 // builder.Services.AddBlazoredLocalStorage(); // Removed for in-memory security
 builder.Services.AddScoped<WalletStorage>();
 builder.Services.AddScoped<WalletService>();
-builder.Services.AddScoped<AdultClient>();
+// builder.Services.AddScoped<AdultClient>(); // Removed
 builder.Services.AddScoped<AccountClient>();
 builder.Services.AddScoped<AuthClient>();
 builder.Services.AddScoped<ZkpProverService>();

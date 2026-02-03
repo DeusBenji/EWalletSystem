@@ -3,7 +3,7 @@
 @using Wallet.Wasm.Services
 @using Wallet.Wasm.Utilities
 @inject WalletService WalletService
-@inject AdultClient AdultClient
+@* Removed AdultClient injection *@
 
 <PageTitle>Adult Demo</PageTitle>
 
@@ -139,20 +139,19 @@
 
         try
         {
-            // Hvis jeres backend bruger tokenId (typisk), så kør sådan her:
-            var result = await AdultClient.VerifyAdultAsync(_token.TokenId);
+            // PROD: Dette danner et ZKP-bevis og sender det til validerings-API'en.
+            // Beviset indeholder INGEN personoplysninger, kun matematik.
+            var success = await WalletService.VerifyTokenOnServerAsync(_token);
 
-            if (result is null)
+            if (!success)
             {
                 _serverIsAdult = false;
-                _serverMessage = "Server-side verifikation fejlede (intet svar fra API).";
+                _serverMessage = "Server-side: ZKP Verifikation fejlede (ugyldig eller udløbet).";
                 return;
             }
 
-            _serverIsAdult = result.IsAdult;
-            _serverMessage = _serverIsAdult
-                ? "Server-side: Brugeren er verificeret som 18+."
-                : "Server-side: Brugeren er ikke 18+ (eller token er ugyldig/udløbet).";
+            _serverIsAdult = true;
+            _serverMessage = "Server-side: Verifikation succes! Brugeren har bevist via ZKP at være 18+.";
         }
         finally
         {
