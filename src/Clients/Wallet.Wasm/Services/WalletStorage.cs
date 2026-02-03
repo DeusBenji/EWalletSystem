@@ -1,37 +1,40 @@
-using Blazored.LocalStorage;
+using System; // Basic
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Wallet.Wasm.Models;
 
 namespace Wallet.Wasm.Services;
 
 public class WalletStorage
 {
-    private readonly ILocalStorageService _localStorage;
+    // In-memory storage (session only)
+    private Guid _accountId = Guid.Empty;
+    private readonly List<LocalWalletToken> _tokens = new();
 
-    private const string TokensStorageKey = "my_wallet_tokens";
-    private const string AccountIdStorageKey = "my_wallet_account_id";
-
-    public WalletStorage(ILocalStorageService localStorage)
+    public WalletStorage()
     {
-        _localStorage = localStorage;
+        // No dependencies needed for in-memory
     }
 
     // -------------------------
     // AccountId (MVP "session")
     // -------------------------
-    public async Task SetAccountIdAsync(Guid accountId)
+    public Task SetAccountIdAsync(Guid accountId)
     {
-        await _localStorage.SetItemAsync(AccountIdStorageKey, accountId.ToString());
+        _accountId = accountId;
+        return Task.CompletedTask;
     }
 
-    public async Task<Guid> GetAccountIdAsync()
+    public Task<Guid> GetAccountIdAsync()
     {
-        var value = await _localStorage.GetItemAsync<string>(AccountIdStorageKey);
-        return Guid.TryParse(value, out var id) ? id : Guid.Empty;
+        return Task.FromResult(_accountId);
     }
 
-    public async Task ClearAccountIdAsync()
+    public Task ClearAccountIdAsync()
     {
-        await _localStorage.RemoveItemAsync(AccountIdStorageKey);
+        _accountId = Guid.Empty;
+        return Task.CompletedTask;
     }
 
     public async Task<bool> IsLoggedInAsync()
@@ -49,36 +52,29 @@ public class WalletStorage
 
         if (clearTokens)
         {
-            await _localStorage.RemoveItemAsync(TokensStorageKey);
+            _tokens.Clear();
         }
     }
 
     // -------------------------
     // Tokens
     // -------------------------
-    public async Task SaveTokenAsync(LocalWalletToken token)
+    public Task SaveTokenAsync(LocalWalletToken token)
     {
-        var tokens = await GetTokensAsync();
-        tokens.RemoveAll(t => t.TokenId == token.TokenId);
-        tokens.Add(token);
-
-        await _localStorage.SetItemAsync(TokensStorageKey, tokens);
+        _tokens.RemoveAll(t => t.TokenId == token.TokenId);
+        _tokens.Add(token);
+        return Task.CompletedTask;
     }
 
-    public async Task<List<LocalWalletToken>> GetTokensAsync()
+    public Task<List<LocalWalletToken>> GetTokensAsync()
     {
-        var tokens = await _localStorage.GetItemAsync<List<LocalWalletToken>>(TokensStorageKey);
-        return tokens ?? new List<LocalWalletToken>();
+        // Return a copy to mimic storage behavior (isolation)
+        return Task.FromResult(_tokens.ToList());
     }
 
-    public async Task RemoveTokenAsync(string tokenId)
+    public Task RemoveTokenAsync(string tokenId)
     {
-        var tokens = await GetTokensAsync();
-        var count = tokens.RemoveAll(t => t.TokenId == tokenId);
-
-        if (count > 0)
-        {
-            await _localStorage.SetItemAsync(TokensStorageKey, tokens);
-        }
+        _tokens.RemoveAll(t => t.TokenId == tokenId);
+        return Task.CompletedTask;
     }
 }

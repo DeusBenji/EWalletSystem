@@ -1,0 +1,16 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  BuildingBlocks -> E:\Ny mappe (2)\EWalletSystem\src\BuildingBlocks\bin\Debug\net10.0\BuildingBlocks.dll
+  Domain -> E:\Ny mappe (2)\EWalletSystem\src\Services\Validation\Domain\bin\Debug\net10.0\Domain.dll
+  Application -> E:\Ny mappe (2)\EWalletSystem\src\Services\Validation\Application\bin\Debug\net10.0\Application.dll
+E:\Ny mappe (2)\EWalletSystem\src\Services\Validation\Infrastructure\Plugins\AgeZkpVerifier.cs(13,26): error CS0246: The type or namespace name 'ILogger<>' could not be found (are you missing a using directive or an assembly reference?) [E:\Ny mappe (2)\EWalletSystem\src\Services\Validation\Infrastructure\Infrastructure.csproj]
+E:\Ny mappe (2)\EWalletSystem\src\Services\Validation\Infrastructure\Plugins\AgeZkpVerifier.cs(19,61): error CS0246: The type or namespace name 'ILogger<>' could not be found (are you missing a using directive or an assembly reference?) [E:\Ny mappe (2)\EWalletSystem\src\Services\Validation\Infrastructure\Infrastructure.csproj]
+
+Build FAILED.
+
+E:\Ny mappe (2)\EWalletSystem\src\Services\Validation\Infrastructure\Plugins\AgeZkpVerifier.cs(13,26): error CS0246: The type or namespace name 'ILogger<>' could not be found (are you missing a using directive or an assembly reference?) [E:\Ny mappe (2)\EWalletSystem\src\Services\Validation\Infrastructure\Infrastructure.csproj]
+E:\Ny mappe (2)\EWalletSystem\src\Services\Validation\Infrastructure\Plugins\AgeZkpVerifier.cs(19,61): error CS0246: The type or namespace name 'ILogger<>' could not be found (are you missing a using directive or an assembly reference?) [E:\Ny mappe (2)\EWalletSystem\src\Services\Validation\Infrastructure\Infrastructure.csproj]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:13.89

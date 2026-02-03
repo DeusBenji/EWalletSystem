@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using Wallet.Wasm.Models;
 
 namespace Wallet.Wasm.Services;
@@ -6,11 +7,13 @@ public class WalletService
 {
     private readonly WalletStorage _storage;
     private readonly HttpClient _http;
+    private readonly ZkpProverService _zkp;
 
-    public WalletService(WalletStorage storage, HttpClient http)
+    public WalletService(WalletStorage storage, HttpClient http, ZkpProverService zkp)
     {
         _storage = storage;
         _http = http;
+        _zkp = zkp;
     }
 
     public async Task<List<LocalWalletToken>> GetMyTokensAsync()
@@ -63,7 +66,7 @@ public class WalletService
         // Simulate a backend signature (hash of the content + secret)
         var dataToSign = token.ComputeHash(); 
         var mockSignature = $"signed-{dataToSign}-valid"; 
-
+        
         // Update token with mock anchor
         var signedToken = token with { 
             Signature = mockSignature, 
@@ -96,13 +99,38 @@ public class WalletService
 
     public async Task<bool> VerifyTokenOnServerAsync(LocalWalletToken token)
     {
-        // 1. Send token to API
-        // 2. API checks signature/fabric
-        // 3. Return result
-        
-        // For MVP demo, we assume success if local check passes, 
-        // to show "Server-side verification" in UI without full backend implementation here.
-        await Task.Delay(800); // Simulate mock roundtrip
-        return VerifyTokenLocally(token); 
+        try 
+        {
+            // 1. Generate ZKP Proof (Client-side)
+            // In a real flow, we get a challenge from the server first or generate one.
+            // For MVP, we presume the server accepts a self-generated challenge or we use a fixed context.
+            var challenge = Guid.NewGuid().ToString(); 
+            var proofJson = await _zkp.GenerateAgeProofAsync(token, challenge);
+
+            // 2. Send to API
+            // The API expects { VcJwt: string } where string can now be the ZKP JSON
+            var payload = new { VcJwt = proofJson };
+            var response = await _http.PostAsJsonAsync("api/Validation/verify", payload);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // Log/Handle error
+                return false;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<VerifyCredentialResponse>();
+            return result?.Success ?? false;
+        }
+        catch
+        {
+            return false;
+        }
     }
+}
+
+// Helper class for JSON deserialization
+public class VerifyCredentialResponse
+{
+    public bool Success { get; set; }
+    public string? FailureReason { get; set; }
 }

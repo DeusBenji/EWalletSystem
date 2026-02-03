@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Wallet.Wasm;
 using Wallet.Wasm.Services;
-using Blazored.LocalStorage;
+// using Blazored.LocalStorage;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -30,12 +30,13 @@ builder.Services.AddScoped(sp =>
     return new HttpClient { BaseAddress = frontendBase };
 });
 
-builder.Services.AddBlazoredLocalStorage();
+// builder.Services.AddBlazoredLocalStorage(); // Removed for in-memory security
 builder.Services.AddScoped<WalletStorage>();
 builder.Services.AddScoped<WalletService>();
 builder.Services.AddScoped<AdultClient>();
 builder.Services.AddScoped<AccountClient>();
 builder.Services.AddScoped<AuthClient>();
+builder.Services.AddScoped<ZkpProverService>();
 
 
 await builder.Build().RunAsync();
