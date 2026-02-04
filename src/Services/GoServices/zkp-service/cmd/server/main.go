@@ -27,6 +27,7 @@ func main() {
 	// API V1
 	// We will inject dependencies (like loaded keys) into the handler later
 	r.HandleFunc("/verify/age-v1", api.VerifyAgeV1Handler).Methods("POST")
+	r.HandleFunc("/verify/policy-v1", api.VerifyPolicyV1Handler).Methods("POST")
 	r.HandleFunc("/utils/hash", api.HashHandler).Methods("POST")
 
 	srv := &http.Server{

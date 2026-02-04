@@ -1,0 +1,14 @@
+{
+    "name": "zkp-verification-scripts",
+    "version": "1.0.0",
+    "description": "Node.js scripts for ZKP proof verification using snarkjs",
+    "main": "verify_proof.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "dependencies": {
+        "snarkjs": "^0.7.0"
+    },
+    "author": "",
+    "license": "MIT"
+}

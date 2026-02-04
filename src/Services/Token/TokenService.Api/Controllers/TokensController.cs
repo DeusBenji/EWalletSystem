@@ -34,6 +34,22 @@ namespace Api.Controllers
             return Ok(response);
         }
 
+        /// <summary>
+        /// Issue a policy-based credential (universal approach)
+        /// </summary>
+        [HttpPost("policy")]
+        public async Task<ActionResult<IssueTokenResponseContract>> IssuePolicy(
+            [FromBody] IssuePolicyCredentialRequestContract contract)
+        {
+            var dto = _mapper.Map<IssuePolicyCredentialDto>(contract);
+
+            var result = await _tokenService.IssuePolicyCredentialAsync(dto, HttpContext.RequestAborted);
+
+            var response = _mapper.Map<IssueTokenResponseContract>(result);
+
+            return Ok(response);
+        }
+
         [AllowAnonymous]
         [HttpGet("health")]
         public IActionResult Health()

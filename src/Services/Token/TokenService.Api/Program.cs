@@ -87,6 +87,9 @@ builder.Services.AddSingleton<IMapper>(sp =>
 builder.Services.AddScoped<ITokenIssuanceService, TokenIssuanceService>();
 builder.Services.AddScoped<IMitIdVerifiedService, MitIdVerifiedService>();
 
+// Eligibility providers (policy plugins)
+builder.Services.AddScoped<IEligibilityProvider, TokenService.Application.Providers.MitIdEligibilityProvider>();
+
 // -----------------------------------------------------
 // Domain repositories (interfaces i Domain, impl i Infrastructure)
 // -----------------------------------------------------

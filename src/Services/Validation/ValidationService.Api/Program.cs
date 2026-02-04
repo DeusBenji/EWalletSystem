@@ -177,6 +177,7 @@ builder.Services.AddScoped<IJwtValidator, VcJwtValidator>();
     // Register Plugins
     builder.Services.AddScoped<IPresentationVerifier, LegacyAgeVerifier>();
     builder.Services.AddScoped<IPresentationVerifier, AgeZkpVerifier>();
+    builder.Services.AddScoped<IPresentationVerifier, PolicyZkpVerifier>();
 
     // Register Infrastructure Clients
     builder.Services.AddHttpClient<IZkpServiceClient, ZkpServiceClient>(client =>
