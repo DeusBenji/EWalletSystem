@@ -80,6 +80,12 @@ builder.Services.AddScoped<IMitIdDbAccess, MitIdAccountDatabaseAccess>();
 builder.Services.AddScoped<IMitIdAccountService, MitIdAccountService>();
 builder.Services.AddSingleton<BachMitID.Infrastructure.Persistence.DbInitializer>();
 
+// Identity Providers (multi-country support)
+builder.Services.AddSingleton<BachMitID.Domain.Interfaces.IIdentityProvider, BachMitID.Infrastructure.Providers.MitIdProvider>();
+builder.Services.AddSingleton<BachMitID.Domain.Interfaces.IIdentityProvider, BachMitID.Infrastructure.Providers.BankIdNoProvider>();
+builder.Services.AddSingleton<BachMitID.Domain.Interfaces.IIdentityProvider, BachMitID.Infrastructure.Providers.EidasProvider>();
+builder.Services.AddSingleton<BachMitID.Application.Interfaces.IIdentityProviderService, BachMitID.Application.Services.IdentityProviderService>();
+
 // Account sync service (til consumer)
 builder.Services.AddScoped<IAccountSyncService, AccountSyncService>();
 
