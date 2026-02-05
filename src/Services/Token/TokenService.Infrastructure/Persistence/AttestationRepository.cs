@@ -1,4 +1,4 @@
-ï»¿using System.Data;
+using System.Data;
 using Dapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
@@ -59,7 +59,7 @@ namespace Infrastructure.Persistence
 
             await conn.OpenAsync(ct);
 
-            // Brug CommandDefinition for at fÃ¥ cancellation token med ind i Dapper
+            // Brug CommandDefinition for at få cancellation token med ind i Dapper
             var command = new CommandDefinition(sql, parameters, cancellationToken: ct);
             await conn.ExecuteAsync(command);
         }
@@ -82,7 +82,7 @@ namespace Infrastructure.Persistence
             if (row is null)
                 return null;
 
-            // Tilpas ctorâ€™en til din konkrete AgeAttestation-implementering
+            // Tilpas ctor’en til din konkrete AgeAttestation-implementering
             return new AgeAttestation(
                 id: row.Id,
                 accountId: row.AccountId,
@@ -96,7 +96,7 @@ namespace Infrastructure.Persistence
                 );
         }
 
-        // Intern type til Dapper-mapping (mÃ¥ gerne ligge nederst i klassen)
+        // Intern type til Dapper-mapping (må gerne ligge nederst i klassen)
         private sealed class AttestationRow
         {
             public Guid Id { get; set; }

@@ -1,4 +1,4 @@
-﻿using Application.Interfaces;
+using Application.Interfaces;
 using Domain.Models;
 using Domain.Repositories;
 using Microsoft.Extensions.Logging;

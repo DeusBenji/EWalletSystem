@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.IO;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
@@ -18,19 +18,19 @@ namespace TokenService.Infrastructure.Signing
             var configuredPath = config["VcSigning:PrivateKeyPath"]
                 ?? throw new InvalidOperationException("VcSigning:PrivateKeyPath not configured");
 
-            // Brug base directory, sÃ¥ relative paths virker fra bin-folderen
+            // Brug base directory, så relative paths virker fra bin-folderen
             var keyPath = Path.IsPathRooted(configuredPath)
                 ? configuredPath
                 : Path.Combine(AppContext.BaseDirectory, configuredPath);
 
-            // SÃ¸rg for at mappen findes
+            // Sørg for at mappen findes
             var dir = Path.GetDirectoryName(keyPath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
             {
                 Directory.CreateDirectory(dir);
             }
 
-            // Hvis filen ikke findes ELLER er tom â†’ generÃ©r en ny dev-nÃ¸gle
+            // Hvis filen ikke findes ELLER er tom ? generér en ny dev-nøgle
             if (!File.Exists(keyPath) || new FileInfo(keyPath).Length == 0)
             {
                 logger.LogWarning("Private key file '{Path}' is missing or empty. Generating a new development key.", keyPath);
@@ -42,7 +42,7 @@ namespace TokenService.Infrastructure.Signing
                 logger.LogInformation("Generated new RSA private key at {Path}", keyPath);
             }
 
-            // LÃ¦s PEM-indhold
+            // Læs PEM-indhold
             var pemContent = File.ReadAllText(keyPath);
 
             if (!pemContent.Contains("BEGIN") || !pemContent.Contains("PRIVATE KEY"))

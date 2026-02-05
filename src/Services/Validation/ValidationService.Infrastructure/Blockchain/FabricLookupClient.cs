@@ -1,4 +1,4 @@
-ï»¿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using Domain.Models;
 using Microsoft.Extensions.Configuration;
 using Application.Interfaces;
@@ -45,13 +45,13 @@ namespace Infrastructure.Blockchain
             }
             catch (HttpRequestException)
             {
-                // DID ikke fundet eller netvÃ¦rksfejl
+                // DID ikke fundet eller netværksfejl
                 return null;
             }
         }
 
         /// <summary>
-        /// Checker om en hash eksisterer pÃ¥ Fabric blockchain
+        /// Checker om en hash eksisterer på Fabric blockchain
         /// </summary>
         public async Task<bool> HashExistsAsync(string hash, CancellationToken ct = default)
         {

@@ -1,4 +1,4 @@
-﻿using Application.DTOs;
+using Application.DTOs;
 using AutoMapper;
 using Domain.Models;
 
@@ -9,10 +9,10 @@ namespace Application.Mapping
         public TokenServiceProfile()
         {
            
-            // Domain → DTO (hvis nødvendigt senere)
+            // Domain ? DTO (hvis n�dvendigt senere)
             CreateMap<AgeAttestation, IssuedTokenDto>();
 
-            // DTO → Domain (hvis nødvendigt – normalt ikke)
+            // DTO ? Domain (hvis n�dvendigt � normalt ikke)
         }
     }
 }

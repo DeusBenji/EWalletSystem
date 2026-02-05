@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Application.DTOs;
@@ -120,7 +120,7 @@ namespace Application.BusinessLogic
 
             await _logRepository.InsertAsync(log);
 
-            // 2) Publish kun når GODKENDT
+            // 2) Publish kun n�r GODKENDT
             if (!result.IsValid)
             {
                 _logger.LogInformation("Credential verify rejected; skipping Kafka publish (by design).");

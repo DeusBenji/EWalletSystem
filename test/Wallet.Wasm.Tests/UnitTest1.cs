@@ -1,4 +1,4 @@
-﻿namespace Wallet.Wasm.Tests;
+namespace Wallet.Wasm.Tests;
 
 public class UnitTest1
 {

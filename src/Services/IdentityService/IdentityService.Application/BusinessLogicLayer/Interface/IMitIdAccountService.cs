@@ -1,0 +1,19 @@
+using IdentityService.Application.DTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace IdentityService.Application.BusinessLogicLayer.Interface
+{
+    public interface IMitIdAccountService
+    {
+        Task<MitIdAccountResult?> CreateFromClaimsAsync(ClaimsPrincipal user, Guid accountId);
+        Task<MitIdAccountDto?> GetByAccountIdAsync(Guid accountId);
+        Task<List<MitIdAccountDto>> GetAllAsync();
+        Task<bool> UpdateAsync(Guid id, MitIdAccountDto dto);
+        Task<bool> DeleteAsync(Guid id);
+    }
+}

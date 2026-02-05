@@ -1,4 +1,4 @@
-﻿using ApiGateway.Helpers;
+using ApiGateway.Helpers;
 using ApiGateway.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,7 +38,7 @@ if (!app.Environment.IsDevelopment())
 app.UseCors("AllowWallet");
 
 //
-// 🔥 YARP middleware der automatisk tilføjer JWT fra gateway til interne services
+// ?? YARP middleware der automatisk tilf�jer JWT fra gateway til interne services
 //
 app.MapReverseProxy(proxyPipeline =>
 {
@@ -54,7 +54,7 @@ app.MapReverseProxy(proxyPipeline =>
             if (path.StartsWith("/mitid"))
             {
                 string jwt = tokenService.CreateServiceToken(
-                    audience: "BachMitID",
+                    audience: "IdentityService",
                     scope: "mitid.read"
                 );
 

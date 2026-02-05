@@ -10,7 +10,7 @@ public record LocalWalletToken
     public string Type { get; init; } = "AdultCredential"; // e.g. "AdultCredential"
     public DateTime IssuedAt { get; init; } = DateTime.UtcNow;
     public DateTime ExpiresAt { get; init; } = DateTime.UtcNow.AddYears(1);
-    public string Issuer { get; init; } = "BachMitID";
+    public string Issuer { get; init; } = "IdentityService";
     public string? Signature { get; init; } // The simulated blockchain signature/hash
     public string? RawToken { get; init; } // Raw content for hashing
     public string? AnchorHashOnChain { get; init; } // The hash stored on chain

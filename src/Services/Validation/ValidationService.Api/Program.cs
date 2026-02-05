@@ -1,4 +1,4 @@
-ï»¿using Application.BusinessLogic;
+using Application.BusinessLogic;
 using Application.Interfaces;
 using AutoMapper;
 using Domain.Repositories;
@@ -79,7 +79,7 @@ builder.Services
 builder.Services.AddAuthorization();
 
 // -------------------------------------------------------
-// AutoMapper âœ… samme stil som BachMitID (manuelt)
+// AutoMapper ? samme stil som IdentityService (manuelt)
 // -------------------------------------------------------
 builder.Services.AddSingleton<IMapper>(sp =>
 {
@@ -87,27 +87,27 @@ builder.Services.AddSingleton<IMapper>(sp =>
 
     var config = new MapperConfiguration(cfg =>
     {
-        // âœ… VIGTIGT:
+        // ? VIGTIGT:
         // Ret denne til den profil-klasse DU har i dit Validation-projekt.
-        // Jeg giver to typiske muligheder afhÃ¦ngigt af dit namespace.
+        // Jeg giver to typiske muligheder afhængigt af dit namespace.
         //
-        // Hvis du allerede har en MappingProfile i API eller Application, sÃ¥ brug den.
+        // Hvis du allerede har en MappingProfile i API eller Application, så brug den.
         // Eksempler:
         // cfg.AddProfile<Api.Mapping.MappingProfile>();
         // cfg.AddProfile<Application.Mapping.MappingProfile>();
 
-        // ---- Standard forsÃ¸g ----
+        // ---- Standard forsøg ----
         // Hvis din profil hedder MappingProfile og ligger i API:
         // cfg.AddProfile<Api.MappingProfile>();
 
         // Hvis din profil hedder ValidationMappingProfile:
         // cfg.AddProfile<ValidationMappingProfile>();
 
-        // âœ… Her vÃ¦lger jeg den mest sandsynlige:
+        // ? Her vælger jeg den mest sandsynlige:
         cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()); // fallback, men indenfor MapperConfiguration
 
-        // Hvis du vil vÃ¦re 100% eksplicit, sÃ¥ kommentÃ©r linjen over ud
-        // og brug Ã©n konkret cfg.AddProfile<...>();
+        // Hvis du vil være 100% eksplicit, så kommentér linjen over ud
+        // og brug én konkret cfg.AddProfile<...>();
     }, loggerFactory);
 
     return config.CreateMapper();
@@ -123,12 +123,12 @@ builder.Services.AddScoped<ICredentialFingerprintService, CredentialFingerprintS
 builder.Services.AddScoped<ICredentialClaimParser, CredentialClaimParser>();
 
 // -------------------------------------------------------
-// Infrastructure â€“ Persistence (Dapper)
+// Infrastructure – Persistence (Dapper)
 // -------------------------------------------------------
 builder.Services.AddScoped<IVerificationLogRepository, VerificationLogRepository>();
 
 // -------------------------------------------------------
-// Infrastructure â€“ Redis cache
+// Infrastructure – Redis cache
 // -------------------------------------------------------
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
@@ -142,7 +142,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
 // -------------------------------------------------------
-// Infrastructure â€“ Fabric lookup client (Go-service)
+// Infrastructure – Fabric lookup client (Go-service)
 // -------------------------------------------------------
 builder.Services.AddHttpClient<IFabricLookupClient, FabricLookupClient>((serviceProvider, client) =>
 {
@@ -163,7 +163,7 @@ builder.Services.AddHttpClient<IFabricLookupClient, FabricLookupClient>((service
 builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaProducer, BuildingBlocks.Kafka.KafkaProducer>();
 
 // -------------------------------------------------------
-// Infrastructure â€“ VC Validation
+// Infrastructure – VC Validation
 // -------------------------------------------------------
 builder.Services.AddScoped<IDidKeyResolver, DidKeyResolver>();
 builder.Services.AddScoped<IDidKeyResolver, DidKeyResolver>();

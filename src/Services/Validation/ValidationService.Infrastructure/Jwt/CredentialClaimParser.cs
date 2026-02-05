@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using Application.Interfaces;
 
@@ -8,7 +8,7 @@ namespace Infrastructure.Jwt
     {
         public Guid? ExtractAccountId(JwtSecurityToken token)
         {
-            // Først subject
+            // F�rst subject
             if (Guid.TryParse(token.Subject, out var subGuid))
                 return subGuid;
 

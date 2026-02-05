@@ -1,4 +1,4 @@
-﻿using Application.DTOs;
+using Application.DTOs;
 using Application.Interfaces;
 using BuildingBlocks.Contracts.Credentials;
 using BuildingBlocks.Contracts.Events;
@@ -126,7 +126,7 @@ namespace Application.BusinessLogic
 
         public async Task<IssuedTokenDto> IssueTokenAsync(IssueTokenDto dto, CancellationToken ct = default)
         {
-            // 1) Hent alder-status (cache → repo)
+            // 1) Hent alder-status (cache ? repo)
             var status = await _ageStatusCache.GetAsync(dto.AccountId, ct);
 
             if (status is null)

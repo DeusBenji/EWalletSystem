@@ -1,4 +1,4 @@
-﻿// DTOs/VerifyCredentialResultDto.cs
+// DTOs/VerifyCredentialResultDto.cs
 namespace Application.DTOs
 {
     public class VerifyCredentialResultDto

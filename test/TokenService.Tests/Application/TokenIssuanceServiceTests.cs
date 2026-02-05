@@ -1,4 +1,4 @@
-ï»¿using Application.BusinessLogic;
+using Application.BusinessLogic;
 using Application.DTOs;
 using Application.Interfaces;
 using BuildingBlocks.Contracts.Events;
@@ -96,7 +96,7 @@ namespace TokenSerrvice.Application
             // Act
             var result = await sut.IssueTokenAsync(dto, CancellationToken.None);
 
-            // Assert â€“ basic token-egenskaber
+            // Assert – basic token-egenskaber
             Assert.NotNull(result);
             Assert.False(string.IsNullOrWhiteSpace(result.Token));
             Assert.True(result.ExpiresAt > result.IssuedAt);
@@ -121,7 +121,7 @@ namespace TokenSerrvice.Application
             Assert.True(savedAttestation.IsAdult);
             Assert.Equal("dummy-hash", savedAttestation.Hash);
 
-            // Event sendt pÃ¥ korrekt topic med korrekt data
+            // Event sendt på korrekt topic med korrekt data
             _eventProducerMock.Verify(
                 x => x.PublishAsync(
                     Topics.TokenIssued,

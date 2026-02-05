@@ -1,4 +1,4 @@
-ï»¿using AutoMapper;
+using AutoMapper;
 using AccountService.API.Contracts;
 using AccountService.API.Controllers;
 using Application.DTOs;
@@ -52,7 +52,7 @@ namespace AccountSerrvicesTest.API
                 _mapperMock.Object);
         }
 
-        // HjÃ¦lpe-metode til at lÃ¦se properties pÃ¥ anonyme typer
+        // Hjælpe-metode til at læse properties på anonyme typer
         private static TProp GetAnonymousProperty<TProp>(object obj, string name)
         {
             Assert.NotNull(obj);

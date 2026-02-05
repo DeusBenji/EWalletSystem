@@ -1,4 +1,4 @@
-﻿using Api.Contracts;
+using Api.Contracts;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Application.DTOs;

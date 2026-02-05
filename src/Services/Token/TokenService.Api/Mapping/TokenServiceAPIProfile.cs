@@ -1,4 +1,4 @@
-﻿using Api.Contracts;
+using Api.Contracts;
 using AutoMapper;
 using Application.DTOs;
 using Domain.Models;
@@ -9,10 +9,10 @@ namespace Api.Mapping
     {
         public okenServiceAPIProfile()
         {
-            // API → DTO
+            // API ? DTO
             CreateMap<IssueTokenRequestContract, IssueTokenDto>();
 
-            // DTO → API
+            // DTO ? API
             CreateMap<IssuedTokenDto, IssueTokenResponseContract>();
 
           

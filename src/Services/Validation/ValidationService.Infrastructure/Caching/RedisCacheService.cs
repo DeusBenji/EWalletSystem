@@ -1,4 +1,4 @@
-﻿// Shared.Infrastructure.Redis / RedisCacheService.cs
+// Shared.Infrastructure.Redis / RedisCacheService.cs
 using Application.Interfaces;
 using StackExchange.Redis;
 using System.Text.Json;

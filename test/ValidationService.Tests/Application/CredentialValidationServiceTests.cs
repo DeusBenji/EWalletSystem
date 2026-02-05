@@ -1,4 +1,4 @@
-﻿using Application.BusinessLogic;
+using Application.BusinessLogic;
 using Application.Interfaces;
 using ValidationService.Application.Interfaces;
 using ValidationService.Application.Verification;

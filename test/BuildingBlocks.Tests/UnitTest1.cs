@@ -1,4 +1,4 @@
-﻿namespace BuildingBlocks.Tests;
+namespace BuildingBlocks.Tests;
 
 public class UnitTest1
 {

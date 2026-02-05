@@ -1,4 +1,4 @@
-﻿using Api.BackgroundServices;
+using Api.BackgroundServices;
 using Application.BusinessLogic;
 using Application.Interfaces;
 using BuildingBlocks.Contracts.Messaging;
@@ -66,7 +66,7 @@ builder.Services
 builder.Services.AddAuthorization();
 
 // -----------------------------------------------------
-// AutoMapper – manuel registration (som i BachMitID)
+// AutoMapper � manuel registration (som i IdentityService)
 // -----------------------------------------------------
 builder.Services.AddSingleton<IMapper>(sp =>
 {
@@ -176,7 +176,7 @@ if (app.Environment.IsDevelopment())
 
 //app.UseHttpsRedirection();
 
-// 🔐 auth middleware order matters
+// ?? auth middleware order matters
 app.UseAuthentication();
 app.UseAuthorization();
 
