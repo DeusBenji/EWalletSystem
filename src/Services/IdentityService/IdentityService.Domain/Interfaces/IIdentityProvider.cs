@@ -25,19 +25,14 @@ public interface IIdentityProvider
     string DisplayName { get; }
     
     /// <summary>
-    /// Authentication mechanism used by this provider
+    /// Authentication mechanism used by this provider (e.g. "redirect", "embedded")
     /// </summary>
-    AuthMechanism AuthMechanism { get; }
+    string AuthMechanism { get; }
     
     /// <summary>
     /// Get the authorization URL for this provider
     /// </summary>
     Task<string> GetAuthorizationUrlAsync(string redirectUri, string state);
-    
-    /// <summary>
-    /// Exchange authorization code for identity data
-    /// </summary>
-    Task<IdentityData> GetIdentityDataAsync(string authCode, CancellationToken ct = default);
     
     /// <summary>
     /// Get provider capabilities (what data can it provide?)

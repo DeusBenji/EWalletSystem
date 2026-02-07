@@ -108,14 +108,14 @@ services:
   account-service:
     build:
       context: .
-      dockerfile: src/Services/Account/API/Dockerfile
+      dockerfile: src/Services/Account/AccountService.Api/Dockerfile
     container_name: account-service
     ports:
       - "7001:8080"
     restart: unless-stopped
     environment:
       ASPNETCORE_URLS: "http://+:8080"
-
+      
       # DB (Docker)
       ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=AccountServiceDB;User Id=sa;Password=YourStrong!Password;TrustServerCertificate=True;"
 
@@ -142,7 +142,7 @@ services:
   validation-service:
     build:
       context: .
-      dockerfile: src/Services/Validation/API/Dockerfile
+      dockerfile: src/Services/Validation/ValidationService.Api/Dockerfile
     container_name: validation-service
     ports:
       - "7002:8080"
@@ -176,7 +176,7 @@ services:
   token-service:
     build:
       context: .
-      dockerfile: src/Services/Token/API/Dockerfile
+      dockerfile: src/Services/Token/TokenService.Api/Dockerfile
     container_name: token-service
     ports:
       - "7003:8080"

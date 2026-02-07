@@ -2,7 +2,6 @@ using AutoMapper;
 using IdentityService.API.Extensions;
 using IdentityService;
 using IdentityService.Domain.Interfaces;
-using IdentityService.Infrastructure.Databaselayer;
 
 using BuildingBlocks.Contracts.Messaging;
 using BuildingBlocks.Kafka;
@@ -12,6 +11,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
@@ -72,8 +72,11 @@ if (string.IsNullOrWhiteSpace(jwtKey))
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     ConnectionMultiplexer.Connect(redisConn));
 
-// Database + services
-builder.Services.AddScoped<IAccDbAccess, AccountDatabaseAccess>();
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = redisConn;
+});
+
 // Database + services
 // AccountDatabaseAccess removed - using AgeVerificationRepository now
 

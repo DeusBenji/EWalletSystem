@@ -1,22 +1,22 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY ["src/Services/Account/API/AccountService.API.csproj", "src/Services/Account/API/"]
-COPY ["src/Services/Account/Application/Application.csproj", "src/Services/Account/Application/"]
-COPY ["src/Services/Account/Domain/Domain.csproj", "src/Services/Account/Domain/"]
-COPY ["src/Services/Account/Infrastructure/Infrastructure.csproj", "src/Services/Account/Infrastructure/"]
+COPY ["src/Services/Account/AccountService.Api/AccountService.Api.csproj", "src/Services/Account/AccountService.Api/"]
+COPY ["src/Services/Account/AccountService.Application/AccountService.Application.csproj", "src/Services/Account/AccountService.Application/"]
+COPY ["src/Services/Account/AccountService.Domain/AccountService.Domain.csproj", "src/Services/Account/AccountService.Domain/"]
+COPY ["src/Services/Account/AccountService.Infrastructure/AccountService.Infrastructure.csproj", "src/Services/Account/AccountService.Infrastructure/"]
 COPY ["src/BuildingBlocks/BuildingBlocks.csproj", "src/BuildingBlocks/"]
 
-RUN dotnet restore "src/Services/Account/API/AccountService.API.csproj"
+RUN dotnet restore "src/Services/Account/AccountService.Api/AccountService.Api.csproj"
 
 COPY . .
 
-WORKDIR "/src/src/Services/Account/API"
-RUN dotnet build "AccountService.API.csproj" -c Release -o /app/build
-RUN dotnet publish "AccountService.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
+WORKDIR "/src/src/Services/Account/AccountService.Api"
+RUN dotnet build "AccountService.Api.csproj" -c Release -o /app/build
+RUN dotnet publish "AccountService.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 EXPOSE 8080
 COPY --from=build /app/publish .
-ENTRYPOINT ["dotnet", "AccountService.API.dll"]
+ENTRYPOINT ["dotnet", "AccountService.Api.dll"]

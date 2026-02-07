@@ -1,9 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using IdentityService.Domain.Enums;
+using IdentityService.Domain.Models;
 using IdentityService.Domain.Interfaces;
-using IdentityService.Domain.Models; // Ensure this exists or use DTOs if IIdentityProvider uses them
 using Microsoft.Extensions.Logging;
 
 namespace IdentityService.Infrastructure.Providers;
@@ -21,22 +20,23 @@ public class SwedishBankIdProvider : IIdentityProvider
     public string Country => "SE";
     public string DisplayName => "BankID (Sweden)";
     
-    // AuthMechanism must match IdentityService.Domain.Enums.AuthMechanism
-    public AuthMechanism AuthMechanism => AuthMechanism.SessionBased;
+    // AuthMechanism matches IdentityService.Domain.Models.ProviderCapabilities
+    public string AuthMechanism => "redirect";
     
-    public ProviderCapabilities GetCapabilities() => new(
-        CanProvideAge: true,
-        CanProvideDateOfBirth: true
-    );
+    public ProviderCapabilities GetCapabilities() => new()
+    {
+        ProviderId = ProviderId,
+        DisplayName = DisplayName,
+        AuthMechanism = "redirect",
+        SupportsStatusPolling = true,
+        SupportedAttributes = new[] { "dateOfBirth" },
+        CanProvideAge = true,
+        CanProvideDateOfBirth = true
+    };
 
     // Legacy methods - not used for Signicat flow but required by interface
     public Task<string> GetAuthorizationUrlAsync(string redirectUri, string state)
     {
         throw new NotSupportedException("Swedish BankID uses Signicat Session flow. Use /api/auth/sbid/start");
-    }
-
-    public Task<IdentityData> GetIdentityDataAsync(string authorizationCode, CancellationToken ct = default)
-    {
-         throw new NotSupportedException("Swedish BankID uses Signicat Session flow.");
     }
 }

@@ -24,6 +24,9 @@ public static class SignicatServiceExtensions
         services.AddHttpClient<ISignicatHttpClient, SignicatHttpClient>()
             .AddStandardResilienceHandler();
 
+        // Session Cache (Redis)
+        services.AddScoped<ISessionCache, IdentityService.Infrastructure.Caching.SessionCache>();
+
         // Access Token Cache (Singleton as it uses IMemoryCache internally)
         services.AddHttpClient<ISignicatAccessTokenCache, SignicatAccessTokenCache>()
             .AddStandardResilienceHandler();

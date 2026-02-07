@@ -1,6 +1,5 @@
-using IdentityService.Domain.Enums;
-using IdentityService.Domain.Interfaces;
 using IdentityService.Domain.Models;
+using IdentityService.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 
@@ -17,15 +16,18 @@ public class BankIdNoProvider : IIdentityProvider
     public string Country => "NO";
     public string DisplayName => "BankID (Norway)";
     
-    public AuthMechanism AuthMechanism => AuthMechanism.SessionBased;
+    public string AuthMechanism => "redirect";
 
-    public ProviderCapabilities GetCapabilities() => new(
-        CanProvideAge: true,
-        CanProvideDateOfBirth: true);
-
-    public Task<IdentityData> GetIdentityDataAsync(string authorizationCode, CancellationToken ct = default)
-        => throw new NotSupportedException(
-            "Norwegian BankID uses Signicat Session flow. Use /api/auth/nbid/start");
+    public ProviderCapabilities GetCapabilities() => new()
+    {
+        ProviderId = ProviderId,
+        DisplayName = DisplayName,
+        AuthMechanism = "redirect",
+        SupportsStatusPolling = true,
+        SupportedAttributes = new[] { "dateOfBirth" },
+        CanProvideAge = true,
+        CanProvideDateOfBirth = true
+    };
 
     public Task<string> GetAuthorizationUrlAsync(string redirectUri, string state)
     {

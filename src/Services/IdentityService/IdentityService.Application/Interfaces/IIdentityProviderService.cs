@@ -1,3 +1,4 @@
+using IdentityService.Application.DTOs;
 using IdentityService.Domain.Interfaces;
 using IdentityService.Domain.Models;
 
@@ -18,11 +19,6 @@ public interface IIdentityProviderService
     /// Get all available identity providers
     /// </summary>
     List<ProviderInfo> GetAvailableProviders();
-    
-    /// <summary>
-    /// Authenticate a user with a specific provider
-    /// </summary>
-    Task<IdentityData> AuthenticateAsync(string providerId, string authCode, CancellationToken ct = default);
     
     /// <summary>
     /// Get providers that support a specific capability

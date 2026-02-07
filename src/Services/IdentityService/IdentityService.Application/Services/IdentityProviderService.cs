@@ -1,3 +1,4 @@
+using IdentityService.Application.DTOs;
 using IdentityService.Application.Interfaces;
 using IdentityService.Domain.Interfaces;
 using IdentityService.Domain.Models;
@@ -56,43 +57,6 @@ public class IdentityProviderService : IIdentityProviderService
             DisplayName = p.DisplayName,
             Capabilities = p.GetCapabilities()
         }).ToList();
-    }
-    
-    public async Task<IdentityData> AuthenticateAsync(
-        string providerId, 
-        string authCode, 
-        CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(authCode))
-        {
-            throw new ArgumentException("Authorization code cannot be null or empty", nameof(authCode));
-        }
-        
-        var provider = GetProvider(providerId);
-        
-        _logger.LogInformation(
-            "Authenticating user with provider {ProviderId}",
-            providerId);
-        
-        try
-        {
-            var identityData = await provider.GetIdentityDataAsync(authCode, ct);
-            
-            _logger.LogInformation(
-                "Successfully authenticated user {Subject} via {ProviderId}",
-                identityData.Subject,
-                providerId);
-            
-            return identityData;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Failed to authenticate user with provider {ProviderId}",
-                providerId);
-            throw;
-        }
     }
     
     public List<ProviderInfo> GetProvidersByCapability(Func<ProviderCapabilities, bool> predicate)

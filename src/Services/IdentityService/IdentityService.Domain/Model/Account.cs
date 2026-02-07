@@ -10,7 +10,7 @@ namespace IdentityService.Domain.Model
     public class Account
     {
         public Guid ID { get; set; }
-        public string Email { get; set; }
+        public string Email { get; set; } = null!;
         public string Password { get; set; } = null!;
         
         // Identity Provider fields

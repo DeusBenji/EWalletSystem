@@ -1,6 +1,8 @@
 using System.Reflection;
 using IdentityService.Domain.Interfaces;
 using IdentityService.Infrastructure.Services;
+using IdentityService.Infrastructure.Mapping;
+using IdentityService.Infrastructure.Http;
 using NetArchTest.Rules;
 using Xunit;
 

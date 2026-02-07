@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using IdentityService.Application.DTOs;
+using IdentityService.Application.Interfaces;
 using IdentityService.Domain.Interfaces;
 using IdentityService.Domain.Model;
 using IdentityService.Infrastructure.Configuration;
@@ -11,9 +12,10 @@ using IdentityService.Infrastructure.Mapping;
 using IdentityService.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Time.Testing;
+
 using Moq;
 using Xunit;
+using ProviderAuthOptions = IdentityService.Infrastructure.Configuration.ProviderAuthOptions;
 
 namespace IdentityService.Tests.IntegrationTests;
 
@@ -23,13 +25,13 @@ public class EdgeCaseTests
     private readonly Mock<ISessionCache> _sessionCacheMock = new();
     private readonly Mock<IAgeVerificationRepository> _repositoryMock = new();
     private readonly Mock<ISafeLogger<SignicatAuthService>> _loggerMock = new();
-    private readonly FakeTimeProvider _timeProvider;
+    private readonly Mock<TimeProvider> _timeProviderMock = new();
     private readonly SignicatAuthService _sut;
 
     public EdgeCaseTests()
     {
-        _timeProvider = new FakeTimeProvider();
-        _timeProvider.SetUtcNow(new DateTimeOffset(2024, 1, 1, 12, 0, 0, TimeSpan.Zero)); // Jan 1st 2024
+        var fixedTime = new DateTimeOffset(2024, 1, 1, 12, 0, 0, TimeSpan.Zero); // Jan 1st 2024
+        _timeProviderMock.Setup(x => x.GetUtcNow()).Returns(fixedTime);
 
         var config = Options.Create(new SignicatConfig
         {
@@ -45,8 +47,8 @@ public class EdgeCaseTests
         // Mappers with FakeTimeProvider
         var mappers = new List<IClaimsMapper>
         {
-            new MitIdClaimsMapper(new Mock<ISafeLogger<MitIdClaimsMapper>>().Object, _timeProvider),
-            new BankIdSeClaimsMapper(new Mock<ISafeLogger<BankIdSeClaimsMapper>>().Object, _timeProvider)
+            new MitIdClaimsMapper(new Mock<ISafeLogger<MitIdClaimsMapper>>().Object, _timeProviderMock.Object),
+            new BankIdSeClaimsMapper(new Mock<ISafeLogger<BankIdSeClaimsMapper>>().Object, _timeProviderMock.Object)
         };
 
         _sut = new SignicatAuthService(
@@ -71,7 +73,7 @@ public class EdgeCaseTests
         var subject = new SubjectDto(Id: "subj-1", DateOfBirth: dob);
         var session = new SessionDataDto("ses-1", "SUCCESS", "mitid", null, "substantial", subject, null);
         
-        var mapper = new MitIdClaimsMapper(new Mock<ISafeLogger<MitIdClaimsMapper>>().Object, _timeProvider);
+        var mapper = new MitIdClaimsMapper(new Mock<ISafeLogger<MitIdClaimsMapper>>().Object, _timeProviderMock.Object);
         var result = mapper.MapToAgeVerification(session);
         
         Assert.False(result.IsAdult, "User should be minor if birthday is tomorrow");
@@ -89,7 +91,7 @@ public class EdgeCaseTests
         var subject = new SubjectDto(Id: "subj-1", DateOfBirth: dob);
         var session = new SessionDataDto("ses-1", "SUCCESS", "mitid", null, "substantial", subject, null);
         
-        var mapper = new MitIdClaimsMapper(new Mock<ISafeLogger<MitIdClaimsMapper>>().Object, _timeProvider);
+        var mapper = new MitIdClaimsMapper(new Mock<ISafeLogger<MitIdClaimsMapper>>().Object, _timeProviderMock.Object);
         var result = mapper.MapToAgeVerification(session);
         
         Assert.True(result.IsAdult, "User should be adult on their 18th birthday");

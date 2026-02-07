@@ -14,19 +14,19 @@ public class AgeVerificationMappingTests
     private readonly Mock<ISafeLogger<MitIdClaimsMapper>> _mitIdLoggerMock = new();
     private readonly Mock<ISafeLogger<BankIdSeClaimsMapper>> _sbidLoggerMock = new();
     private readonly Mock<ISafeLogger<BankIdNoClaimsMapper>> _nbidLoggerMock = new();
-    private readonly FakeTimeProvider _timeProvider;
+    private readonly Mock<TimeProvider> _timeProviderMock = new();
 
     public AgeVerificationMappingTests()
     {
-        _timeProvider = new FakeTimeProvider();
-        _timeProvider.SetUtcNow(new DateTimeOffset(2023, 10, 27, 12, 0, 0, TimeSpan.Zero));
+        var fixedTime = new DateTimeOffset(2023, 10, 27, 12, 0, 0, TimeSpan.Zero);
+        _timeProviderMock.Setup(x => x.GetUtcNow()).Returns(fixedTime);
     }
 
     [Fact]
     public void MitId_ShouldFail_WhenDateOfBirthMissing()
     {
         // Arrange
-        var mapper = new MitIdClaimsMapper(_mitIdLoggerMock.Object, _timeProvider);
+        var mapper = new MitIdClaimsMapper(_mitIdLoggerMock.Object, _timeProviderMock.Object);
         var session = new SessionDataDto(
             Id: "test-session",
             Status: "SUCCESS",
@@ -46,8 +46,8 @@ public class AgeVerificationMappingTests
     public void MitId_ShouldCalculateIsAdult_FromDateOfBirth()
     {
         // Arrange
-        var mapper = new MitIdClaimsMapper(_mitIdLoggerMock.Object, _timeProvider);
-        var eighteenYearsAgo = _timeProvider.GetUtcNow().AddYears(-18).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var mapper = new MitIdClaimsMapper(_mitIdLoggerMock.Object, _timeProviderMock.Object);
+        var eighteenYearsAgo = _timeProviderMock.Object.GetUtcNow().AddYears(-18).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         var session = new SessionDataDto(
             Id: "test-session",
             Status: "SUCCESS",
@@ -71,8 +71,8 @@ public class AgeVerificationMappingTests
     public void MitId_ShouldIdentifyMinor_FromDateOfBirth()
     {
         // Arrange
-        var mapper = new MitIdClaimsMapper(_mitIdLoggerMock.Object, _timeProvider);
-        var seventeenYearsAgo = _timeProvider.GetUtcNow().AddYears(-17).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var mapper = new MitIdClaimsMapper(_mitIdLoggerMock.Object, _timeProviderMock.Object);
+        var seventeenYearsAgo = _timeProviderMock.Object.GetUtcNow().AddYears(-17).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         var session = new SessionDataDto(
             Id: "test-session",
             Status: "SUCCESS",
@@ -94,7 +94,7 @@ public class AgeVerificationMappingTests
     public void BankIdSe_ShouldFail_WhenDateOfBirthMissing()
     {
         // Arrange
-        var mapper = new BankIdSeClaimsMapper(_sbidLoggerMock.Object, _timeProvider);
+        var mapper = new BankIdSeClaimsMapper(_sbidLoggerMock.Object, _timeProviderMock.Object);
         var session = new SessionDataDto(
             Id: "test-session",
             Status: "SUCCESS",
@@ -114,7 +114,7 @@ public class AgeVerificationMappingTests
     public void BankIdNo_ShouldFail_WhenDateOfBirthMissing()
     {
         // Arrange
-        var mapper = new BankIdNoClaimsMapper(_nbidLoggerMock.Object, _timeProvider);
+        var mapper = new BankIdNoClaimsMapper(_nbidLoggerMock.Object, _timeProviderMock.Object);
         var session = new SessionDataDto(
             Id: "test-session",
             Status: "SUCCESS",
@@ -137,7 +137,7 @@ public class AgeVerificationMappingTests
     public void MitId_ShouldFail_WhenDateOfBirthInvalidFormat(string invalidDob)
     {
         // Arrange
-        var mapper = new MitIdClaimsMapper(_mitIdLoggerMock.Object, _timeProvider);
+        var mapper = new MitIdClaimsMapper(_mitIdLoggerMock.Object, _timeProviderMock.Object);
         var session = new SessionDataDto(
             Id: "test-session",
             Status: "SUCCESS",
@@ -159,7 +159,7 @@ public class AgeVerificationMappingTests
         // This is strictly a unit test for the mapper output
         // More comprehensive privacy tests will be in PrivacyTests
         
-        var mapper = new MitIdClaimsMapper(_mitIdLoggerMock.Object, _timeProvider);
+        var mapper = new MitIdClaimsMapper(_mitIdLoggerMock.Object, _timeProviderMock.Object);
         var dob = "2000-01-01";
         var session = new SessionDataDto(
             Id: "test-session",

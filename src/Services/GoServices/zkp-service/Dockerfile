@@ -1,5 +1,5 @@
 # Build Stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine AS builder
 WORKDIR /app
 
 # Copy generic go.mod and go.sum (if any) or just init later
