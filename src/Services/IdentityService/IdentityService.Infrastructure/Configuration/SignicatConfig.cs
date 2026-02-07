@@ -41,6 +41,11 @@ public class SignicatConfig
     /// Default callback base URL for authentication redirects
     /// </summary>
     public string DefaultCallbackBaseUrl { get; set; } = null!;
+
+    /// <summary>
+    /// Optional: OAuth2 Token Endpoint (overrides default derivation from BaseUrl)
+    /// </summary>
+    public string? TokenEndpoint { get; set; }
     
     /// <summary>
     /// Attributes to request from identity provider (e.g., dateOfBirth, name, nationalId)
@@ -66,6 +71,11 @@ public class SignicatConfig
     /// Session lifetime in seconds (default: 600 = 10 minutes)
     /// </summary>
     public int SessionLifetimeSeconds { get; set; } = 600;
+
+    /// <summary>
+    /// Provider-specific configurations
+    /// </summary>
+    public Dictionary<string, ProviderAuthOptions> Providers { get; set; } = new();
     
     /// <summary>
     /// Validate configuration on startup

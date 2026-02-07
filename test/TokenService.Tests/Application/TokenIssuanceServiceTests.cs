@@ -1,4 +1,4 @@
-using Application.BusinessLogic;
+ï»¿using Application.BusinessLogic;
 using Application.DTOs;
 using Application.Interfaces;
 using BuildingBlocks.Contracts.Events;
@@ -7,6 +7,7 @@ using Domain.Models;
 using Domain.Repositories;
 using Moq;
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TokenService.Application.Interfaces;
@@ -34,7 +35,8 @@ namespace TokenSerrvice.Application
                 _fabricMock.Object,
                 _hashCalculatorMock.Object,
                 _eventProducerMock.Object,
-                _vcSigningMock.Object);
+                _vcSigningMock.Object,
+                Enumerable.Empty<IEligibilityProvider>());
         }
 
         [Fact]
@@ -96,7 +98,7 @@ namespace TokenSerrvice.Application
             // Act
             var result = await sut.IssueTokenAsync(dto, CancellationToken.None);
 
-            // Assert – basic token-egenskaber
+            // Assert â€“ basic token-egenskaber
             Assert.NotNull(result);
             Assert.False(string.IsNullOrWhiteSpace(result.Token));
             Assert.True(result.ExpiresAt > result.IssuedAt);
@@ -121,7 +123,7 @@ namespace TokenSerrvice.Application
             Assert.True(savedAttestation.IsAdult);
             Assert.Equal("dummy-hash", savedAttestation.Hash);
 
-            // Event sendt på korrekt topic med korrekt data
+            // Event sendt pÃ¥ korrekt topic med korrekt data
             _eventProducerMock.Verify(
                 x => x.PublishAsync(
                     Topics.TokenIssued,

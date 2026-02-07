@@ -86,7 +86,13 @@ public class PolicyZkpVerifier : IPresentationVerifier
             }
 
             // 5. Policy Binding Check: Hash(Request.PolicyId) == Proof.publicInputs.policyHash
-            var expectedPolicyHash = await _zkpService.GetPolicyHashAsync(request.PolicyId ?? vcPolicyId, ct);
+            var policyIdToVerify = request.PolicyId ?? vcPolicyId;
+            if (string.IsNullOrEmpty(policyIdToVerify))
+            {
+                 return new VerificationResult(false, new[] { ReasonCodes.MISSING_CLAIMS }, "PolicyProof", jwt.Issuer, DateTimeOffset.UtcNow);
+            }
+
+            var expectedPolicyHash = await _zkpService.GetPolicyHashAsync(policyIdToVerify, ct);
             if (expectedPolicyHash == null)
             {
                 return new VerificationResult(false, new[] { ReasonCodes.ZKP_SERVICE_UNAVAILABLE }, "PolicyProof", jwt.Issuer, DateTimeOffset.UtcNow);
@@ -108,7 +114,7 @@ public class PolicyZkpVerifier : IPresentationVerifier
                 presentation.PublicInputs.ChallengeHash,
                 presentation.PublicInputs.PolicyHash,
                 presentation.PublicInputs.SubjectCommitment,
-                presentation.PublicInputs.SessionTag,
+                presentation.PublicInputs.SessionTag ?? string.Empty,
                 ct);
 
             if (!isValid)

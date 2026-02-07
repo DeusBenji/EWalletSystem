@@ -37,7 +37,7 @@ builder.Services.AddScoped<WalletService>();
 // builder.Services.AddScoped<AdultClient>(); // Removed
 builder.Services.AddScoped<AccountClient>();
 builder.Services.AddScoped<AuthClient>();
-builder.Services.AddScoped<ZkpProverService>();
+builder.Services.AddScoped<IZkpProverService, ZkpProverService>();
 
 
 await builder.Build().RunAsync();

@@ -2,6 +2,8 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using IdentityService.Application.DTOs;
+using IdentityService.Application.Interfaces;
+using IdentityService.Domain.Interfaces;
 using IdentityService.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -12,21 +14,24 @@ namespace IdentityService.Infrastructure.Http;
 /// HTTP client for Signicat EID Hub REST API
 /// Handles authentication, retry logic, and request/response logging
 /// </summary>
-public class SignicatHttpClient
+public class SignicatHttpClient : ISignicatHttpClient
 {
     private readonly HttpClient _httpClient;
     private readonly SignicatConfig _config;
-    private readonly ILogger<SignicatHttpClient> _logger;
+    private readonly ISafeLogger<SignicatHttpClient> _logger;
+    private readonly ISignicatAccessTokenCache _tokenCache;
     private readonly JsonSerializerOptions _jsonOptions;
     
     public SignicatHttpClient(
         HttpClient httpClient, 
         IOptions<SignicatConfig> config,
-        ILogger<SignicatHttpClient> logger)
+        ISafeLogger<SignicatHttpClient> logger,
+        ISignicatAccessTokenCache tokenCache)
     {
         _httpClient = httpClient;
         _config = config.Value;
         _logger = logger;
+        _tokenCache = tokenCache;
         
         _jsonOptions = new JsonSerializerOptions
         {
@@ -40,34 +45,39 @@ public class SignicatHttpClient
     private void ConfigureHttpClient()
     {
         _httpClient.BaseAddress = new Uri(_config.BaseUrl.TrimEnd('/') + "/");
-        
+        _httpClient.DefaultRequestHeaders.Accept.Add(
+            new MediaTypeWithQualityHeaderValue("application/json"));
+    }
+
+    private async Task EnsureAuthenticatedAsync(CancellationToken ct)
+    {
         // Add authentication header
         if (!string.IsNullOrWhiteSpace(_config.ApiKey))
         {
-            _httpClient.DefaultRequestHeaders.Authorization = 
-                new AuthenticationHeaderValue("Bearer", _config.ApiKey);
+             if (_httpClient.DefaultRequestHeaders.Authorization == null)
+             {
+                _httpClient.DefaultRequestHeaders.Authorization = 
+                    new AuthenticationHeaderValue("Bearer", _config.ApiKey);
+             }
         }
         else if (!string.IsNullOrWhiteSpace(_config.ClientId))
         {
-            // For client credentials, we'd typically get a token first
-            // For now, use Basic auth as fallback
-            var credentials = Convert.ToBase64String(
-                Encoding.ASCII.GetBytes($"{_config.ClientId}:{_config.ClientSecret}"));
+            // Use Client Credentials flow via Cache
+            var token = await _tokenCache.GetAccessTokenAsync(ct);
             _httpClient.DefaultRequestHeaders.Authorization = 
-                new AuthenticationHeaderValue("Basic", credentials);
+                new AuthenticationHeaderValue("Bearer", token);
         }
-        
-        _httpClient.DefaultRequestHeaders.Accept.Add(
-            new MediaTypeWithQualityHeaderValue("application/json"));
     }
     
     /// <summary>
     /// Create a new authentication session
     /// </summary>
-    public async Task<CreateSessionResponse> CreateSessionAsync(
-        CreateSessionRequest request, 
+    public async Task<SessionDataDto> CreateSessionAsync(
+        SessionRequestDto request, 
         CancellationToken ct = default)
     {
+        await EnsureAuthenticatedAsync(ct);
+
         _logger.LogInformation(
             "Creating Signicat session with flow={Flow}, providers={Providers}", 
             request.Flow, 
@@ -89,14 +99,14 @@ public class SignicatHttpClient
         }
         
         var responseJson = await response.Content.ReadAsStringAsync(ct);
-        var result = JsonSerializer.Deserialize<CreateSessionResponse>(responseJson, _jsonOptions);
+        var result = JsonSerializer.Deserialize<SessionDataDto>(responseJson, _jsonOptions);
         
         if (result == null)
-            throw new InvalidOperationException("Failed to deserialize CreateSessionResponse");
+            throw new InvalidOperationException("Failed to deserialize SessionDataDto");
         
         _logger.LogInformation(
             "Created session {SessionId}, expires at {ExpiresAt}", 
-            MaskSessionId(result.Id), 
+            MaskSessionId(result.Id!), 
             result.ExpiresAt);
         
         return result;
@@ -105,7 +115,7 @@ public class SignicatHttpClient
     /// <summary>
     /// Get session status
     /// </summary>
-    public async Task<GetSessionResponse> GetSessionStatusAsync(
+    public async Task<SessionDataDto> GetSessionStatusAsync(
         string sessionId, 
         CancellationToken ct = default)
     {
@@ -124,14 +134,14 @@ public class SignicatHttpClient
         }
         
         var responseJson = await response.Content.ReadAsStringAsync(ct);
-        var result = JsonSerializer.Deserialize<GetSessionResponse>(responseJson, _jsonOptions);
+        var result = JsonSerializer.Deserialize<SessionDataDto>(responseJson, _jsonOptions);
         
         if (result == null)
-            throw new InvalidOperationException("Failed to deserialize GetSessionResponse");
+            throw new InvalidOperationException("Failed to deserialize SessionDataDto");
         
         _logger.LogInformation(
             "Session {SessionId} status: {Status}, provider: {Provider}", 
-            MaskSessionId(result.Id), 
+            MaskSessionId(result.Id!), 
             result.Status,
             result.Provider ?? "unknown");
         

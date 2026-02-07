@@ -21,10 +21,10 @@ scrape_configs:
     static_configs:
       - targets: ['token-service:8080']
 
-  - job_name: 'bachmitid-api'
+  - job_name: 'identity-service'
     metrics_path: /metrics
     static_configs:
-      - targets: ['bachmitid-api:8080']
+      - targets: ['identity-service:8080']
 
   - job_name: 'fabric-resolver'
     metrics_path: /metrics

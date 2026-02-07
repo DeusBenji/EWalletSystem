@@ -19,6 +19,10 @@ import (
 // to match the circuit's behavior: mimc.Write(circuit.Var)...
 func mimcHashBN254(inputs ...*big.Int) *big.Int {
 	h := fr_mimc.NewMiMC()
+	// Pad seed to 32 bytes to match field element size expected by mimc.Write
+	seedBytes := make([]byte, 32)
+	copy(seedBytes, "seed")
+	h.Write(seedBytes)
 
 	for _, inp := range inputs {
 		var e fr.Element

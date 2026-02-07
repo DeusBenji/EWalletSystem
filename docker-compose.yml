@@ -207,13 +207,13 @@ services:
       - redis
 
   # =====================
-  # BachMitID API
+  # Identity Service (Signicat)
   # =====================
-  bachmitid-api:
+  identity-service:
     build:
       context: .
-      dockerfile: src/Services/BachMitID/BachMitID/Dockerfile
-    container_name: bachmitid-api
+      dockerfile: src/Services/IdentityService/IdentityService.API/Dockerfile
+    container_name: identity-service
     ports:
       - "7004:8080"
     restart: unless-stopped
@@ -223,7 +223,8 @@ services:
       Wallet__BaseUrl: "http://localhost:8081"
 
       # DB (Docker)
-      ConnectionStrings__CompanyConnection: "Server=sqlserver;Database=BachMitID;User Id=sa;Password=YourStrong!Password;TrustServerCertificate=True;"
+      # Note: Database name might need update if migration script didn't rename DB
+      ConnectionStrings__CompanyConnection: "Server=sqlserver;Database=IdentityServiceDB;User Id=sa;Password=YourStrong!Password;TrustServerCertificate=True;"
       ConnectionStrings__RedisConnection: "redis:6379"
 
       # Kafka
@@ -237,7 +238,7 @@ services:
 
       # JWT (must match gateway)
       Jwt__Issuer: "ApiGateway"
-      Jwt__Audience: "BachMitID"
+      Jwt__Audience: "IdentityService"
       Jwt__Key: "DEV_SUPER_SECRET_KEY_1234567890_ABCD"
     depends_on:
       - sqlserver
@@ -260,19 +261,19 @@ services:
     environment:
       ASPNETCORE_URLS: "http://+:8080"
 
-      # JWT settings (must match BachMitID)
+      # JWT settings (must match IdentityService)
       Jwt__Issuer: "ApiGateway"
-      Jwt__Audience: "BachMitID"
+      Jwt__Audience: "IdentityService" # Updated audience
       Jwt__Key: "DEV_SUPER_SECRET_KEY_1234567890_ABCD"
 
       # 🔥 YARP overrides (Docker-netværk)
-      ReverseProxy__Clusters__mitid-cluster__Destinations__mitid-api__Address: "http://bachmitid-api:8080/"
+      ReverseProxy__Clusters__mitid-cluster__Destinations__mitid-api__Address: "http://identity-service:8080/"
       ReverseProxy__Clusters__account-cluster__Destinations__account-api__Address: "http://account-service:8080/"
       ReverseProxy__Clusters__validation-cluster__Destinations__validation-api__Address: "http://validation-service:8080/"
       ReverseProxy__Clusters__token-cluster__Destinations__token-api__Address: "http://token-service:8080/"
 
     depends_on:
-      - bachmitid-api
+      - identity-service
       - account-service
       - validation-service
       - token-service

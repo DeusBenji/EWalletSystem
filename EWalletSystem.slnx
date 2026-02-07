@@ -21,12 +21,7 @@
   <Folder Name="/src/Services/Account/API/">
     <Project Path="src/Services/Account/API/AccountService.API.csproj" />
   </Folder>
-  <Folder Name="/src/Services/BachMitID/">
-    <Project Path="src/Services/BachMitID/BachMitID.Application/BachMitID.Application.csproj" />
-    <Project Path="src/Services/BachMitID/BachMitID.Domain/BachMitID.Domain.csproj" />
-    <Project Path="src/Services/BachMitID/BachMitID.Infrastructure/BachMitID.Infrastructure.csproj" />
-    <Project Path="src/Services/BachMitID/BachMitID/BachMitID.csproj" />
-  </Folder>
+
   <Folder Name="/src/Services/Token/">
     <Project Path="src/Services/Token/Application/Application.csproj" />
     <Project Path="src/Services/Token/Domain/Domain.csproj" />
@@ -52,9 +47,7 @@
   <Folder Name="/tests/Account.Tests/">
     <Project Path="tests/Account.Tests/AccountSerrvice.Test.csproj" />
   </Folder>
-  <Folder Name="/tests/BachMitID.Tests/">
-    <Project Path="tests/BachMitID.Tests/BachMitID.Tests.csproj" />
-  </Folder>
+
   <Folder Name="/tests/Token.Tests/">
     <Project Path="tests/Token.Tests/TokenSerrviceTest.csproj" />
   </Folder>

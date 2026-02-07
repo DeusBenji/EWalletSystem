@@ -7,9 +7,9 @@ public class WalletService
 {
     private readonly WalletStorage _storage;
     private readonly HttpClient _http;
-    private readonly ZkpProverService _zkp;
+    private readonly IZkpProverService _zkp;
 
-    public WalletService(WalletStorage storage, HttpClient http, ZkpProverService zkp)
+    public WalletService(WalletStorage storage, HttpClient http, IZkpProverService zkp)
     {
         _storage = storage;
         _http = http;

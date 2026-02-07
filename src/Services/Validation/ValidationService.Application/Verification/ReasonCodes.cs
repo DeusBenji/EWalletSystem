@@ -15,5 +15,6 @@ namespace ValidationService.Application.Verification
         public const string MISSING_CLAIMS = "MISSING_CLAIMS";
         public const string SYSTEM_ERROR = "SYSTEM_ERROR";
         public const string INVALID_SIGNATURE = "INVALID_SIGNATURE";
+        public const string CREDENTIAL_EXPIRED = "CREDENTIAL_EXPIRED";
     }
 }

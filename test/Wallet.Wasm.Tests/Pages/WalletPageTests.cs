@@ -23,7 +23,14 @@ public class WalletPageTests : IDisposable
         
         ctx.Services.AddSingleton<WalletStorage>(); // Singleton to ensure shared state in test
         ctx.Services.AddScoped<WalletService>(); 
-        ctx.Services.AddScoped<ZkpProverService>(); // Real service is fine for now, or mock if complex
+        
+        // Mock JSRuntime (needed for SecretManager)
+        ctx.Services.AddSingleton(new Mock<Microsoft.JSInterop.IJSRuntime>().Object);
+        
+        // Add SecretManager (needed for ZkpProverService)
+        ctx.Services.AddScoped<SecretManager>();
+
+        ctx.Services.AddScoped<IZkpProverService, ZkpProverService>(); 
         ctx.Services.AddScoped(sp => _mockHttp.Object);
     }
 

@@ -1,6 +1,8 @@
+using IdentityService.Domain.Enums;
 using IdentityService.Domain.Interfaces;
 using IdentityService.Domain.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace IdentityService.Infrastructure.Providers;
 
@@ -15,28 +17,25 @@ public class EidasProvider : IIdentityProvider
     public string Country => "EU";
     public string DisplayName => "eIDAS (European Union)";
     
+    public AuthMechanism AuthMechanism => AuthMechanism.OAuth; // Placeholder
+
+    public ProviderCapabilities GetCapabilities() => new(
+        CanProvideAge: false,
+        CanProvideDateOfBirth: false);
+
+    public Task<IdentityData> GetIdentityDataAsync(string authorizationCode, CancellationToken ct = default)
+        => throw new NotSupportedException(
+            "Legacy GetIdentityDataAsync is not supported. Use /api/auth/{providerId} session flow.");
+
+    public Task<string> GetAuthorizationUrlAsync(string redirectUri, string state)
+    {
+        throw new NotImplementedException("eIDAS integration not yet implemented");
+    }
+
     public EidasProvider(ILogger<EidasProvider> logger)
     {
         _logger = logger;
     }
     
-    public ProviderCapabilities GetCapabilities() => new()
-    {
-        CanProvideAge = true,  // Sometimes available
-        CanProvideName = true,
-        CanProvideNationalId = false,  // Privacy-preserving
-        CanProvideAddress = false,
-        CanProvideEmail = false,
-        CanProvidePhone = false
-    };
-    
-    public Task<string> GetAuthorizationUrlAsync(string redirectUri, string state)
-    {
-        throw new NotImplementedException("eIDAS integration not yet implemented");
-    }
-    
-    public Task<IdentityData> GetIdentityDataAsync(string authCode, CancellationToken ct = default)
-    {
-        throw new NotImplementedException("eIDAS integration not yet implemented");
-    }
+
 }

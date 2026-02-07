@@ -71,34 +71,35 @@ namespace IdentityService.Infrastructure.Persistence
             using (var conn = new SqlConnection(connectionString))
             {
                 await conn.OpenAsync();
-                
-                var sql = @"
-                    IF OBJECT_ID(N'Account', N'U') IS NULL
-                    BEGIN
-                        CREATE TABLE Account (
-                            Id UNIQUEIDENTIFIER PRIMARY KEY,
-                            Email NVARCHAR(255) NOT NULL
-                        );
-                    END;
 
-                    IF OBJECT_ID(N'MitID_Account', N'U') IS NULL
+                var sql = @"
+                    IF OBJECT_ID(N'AgeVerifications', N'U') IS NULL
                     BEGIN
-                        CREATE TABLE MitID_Account (
-                            ID UNIQUEIDENTIFIER PRIMARY KEY,
-                            AccountID UNIQUEIDENTIFIER NOT NULL,
-                            SubID NVARCHAR(255) NOT NULL,
+                        CREATE TABLE AgeVerifications (
+                            Id UNIQUEIDENTIFIER PRIMARY KEY,
+                            AccountId UNIQUEIDENTIFIER NULL,
+                            ProviderId NVARCHAR(50) NOT NULL,
+                            SubjectId NVARCHAR(256) NOT NULL,
                             IsAdult BIT NOT NULL,
-                            FOREIGN KEY (AccountID) REFERENCES Account(Id)
+                            VerifiedAt DATETIME2 NOT NULL,
+                            AssuranceLevel NVARCHAR(50) NULL,
+                            ExpiresAt DATETIME2 NULL,
+                            CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                            UpdatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE()
                         );
                         
-                        CREATE INDEX IX_MitID_Account_SubID ON MitID_Account(SubID);
+                        -- Unique constraint for Provider + Subject to ensure one record per user/provider
+                        CREATE UNIQUE INDEX IX_AgeVerifications_Provider_Subject ON AgeVerifications(ProviderId, SubjectId);
+                        
+                        -- Index for fast Account lookup
+                        CREATE INDEX IX_AgeVerifications_AccountId ON AgeVerifications(AccountId) WHERE AccountId IS NOT NULL;
                     END;";
 
                 using (var cmd = new SqlCommand(sql, conn))
                 {
                     await cmd.ExecuteNonQueryAsync();
                 }
-                _logger.LogInformation("IdentityService Database tables ensured.");
+                _logger.LogInformation("IdentityService Database tables ensured (AgeVerifications).");
             }
         }
     }

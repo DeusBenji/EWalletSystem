@@ -1,4 +1,5 @@
 using Domain.Repositories;
+using Application.Interfaces;
 using TokenService.Application.Interfaces;
 
 namespace TokenService.Application.Providers;

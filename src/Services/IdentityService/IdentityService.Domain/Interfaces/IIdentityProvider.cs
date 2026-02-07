@@ -1,3 +1,4 @@
+using IdentityService.Domain.Enums;
 using IdentityService.Domain.Models;
 
 namespace IdentityService.Domain.Interfaces;
@@ -9,12 +10,12 @@ namespace IdentityService.Domain.Interfaces;
 public interface IIdentityProvider
 {
     /// <summary>
-    /// Unique identifier for this provider (e.g., "mitid", "bankid-no", "eidas")
+    /// Unique identifier for this provider (e.g., "mitid", "sbid", "nbid")
     /// </summary>
     string ProviderId { get; }
     
     /// <summary>
-    /// ISO 3166-1 alpha-2 country code (e.g., "DK", "NO", "EU")
+    /// ISO 3166-1 alpha-2 country code (e.g., "DK", "SE", "NO")
     /// </summary>
     string Country { get; }
     
@@ -22,6 +23,11 @@ public interface IIdentityProvider
     /// Human-readable display name
     /// </summary>
     string DisplayName { get; }
+    
+    /// <summary>
+    /// Authentication mechanism used by this provider
+    /// </summary>
+    AuthMechanism AuthMechanism { get; }
     
     /// <summary>
     /// Get the authorization URL for this provider

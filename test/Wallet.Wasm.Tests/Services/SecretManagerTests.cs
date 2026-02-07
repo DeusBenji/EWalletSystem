@@ -131,14 +131,14 @@ public class SecretManagerTests : TestContext
         
         await _secretManager.GetOrCreateSecretAsync(); // Cache the secret
 
-        _mockJs.Setup(js => js.InvokeAsync<IJSVoidResult>("secretManager.deleteSecret", It.IsAny<object[]>()))
-            .ReturnsAsync(Mock.Of<IJSVoidResult>());
+        _mockJs.Setup(js => js.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("secretManager.deleteSecret", It.IsAny<object[]>()))
+            .Returns(new ValueTask<Microsoft.JSInterop.Infrastructure.IJSVoidResult>(default(Microsoft.JSInterop.Infrastructure.IJSVoidResult)!));
 
         // Act
         await _secretManager.DeleteSecretAsync();
 
         // Assert
-        _mockJs.Verify(js => js.InvokeAsync<IJSVoidResult>("secretManager.deleteSecret", It.IsAny<object[]>()), Times.Once);
+        _mockJs.Verify(js => js.InvokeAsync<Microsoft.JSInterop.Infrastructure.IJSVoidResult>("secretManager.deleteSecret", It.IsAny<object[]>()), Times.Once);
     }
 
     [Fact]

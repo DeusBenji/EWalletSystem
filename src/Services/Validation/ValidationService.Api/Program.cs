@@ -1,4 +1,4 @@
-using Application.BusinessLogic;
+ï»¿using Application.BusinessLogic;
 using Application.Interfaces;
 using AutoMapper;
 using Domain.Repositories;
@@ -16,7 +16,6 @@ using ValidationService.Application.Interfaces;
 using ValidationService.Infrastructure.Jwt;
 using ValidationService.Plugins;
 using ValidationService.Infrastructure.Clients;
-using ValidationService.Infrastructure.Verifiers;
 using ValidationService.Application.Verification;
 using OpenTelemetry.Metrics;
 
@@ -89,25 +88,25 @@ builder.Services.AddSingleton<IMapper>(sp =>
     {
         // ? VIGTIGT:
         // Ret denne til den profil-klasse DU har i dit Validation-projekt.
-        // Jeg giver to typiske muligheder afhængigt af dit namespace.
+        // Jeg giver to typiske muligheder afhÃ¦ngigt af dit namespace.
         //
-        // Hvis du allerede har en MappingProfile i API eller Application, så brug den.
+        // Hvis du allerede har en MappingProfile i API eller Application, sÃ¥ brug den.
         // Eksempler:
         // cfg.AddProfile<Api.Mapping.MappingProfile>();
         // cfg.AddProfile<Application.Mapping.MappingProfile>();
 
-        // ---- Standard forsøg ----
+        // ---- Standard forsÃ¸g ----
         // Hvis din profil hedder MappingProfile og ligger i API:
         // cfg.AddProfile<Api.MappingProfile>();
 
         // Hvis din profil hedder ValidationMappingProfile:
         // cfg.AddProfile<ValidationMappingProfile>();
 
-        // ? Her vælger jeg den mest sandsynlige:
+        // ? Her vÃ¦lger jeg den mest sandsynlige:
         cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()); // fallback, men indenfor MapperConfiguration
 
-        // Hvis du vil være 100% eksplicit, så kommentér linjen over ud
-        // og brug én konkret cfg.AddProfile<...>();
+        // Hvis du vil vÃ¦re 100% eksplicit, sÃ¥ kommentÃ©r linjen over ud
+        // og brug Ã©n konkret cfg.AddProfile<...>();
     }, loggerFactory);
 
     return config.CreateMapper();
@@ -123,12 +122,12 @@ builder.Services.AddScoped<ICredentialFingerprintService, CredentialFingerprintS
 builder.Services.AddScoped<ICredentialClaimParser, CredentialClaimParser>();
 
 // -------------------------------------------------------
-// Infrastructure – Persistence (Dapper)
+// Infrastructure â€“ Persistence (Dapper)
 // -------------------------------------------------------
 builder.Services.AddScoped<IVerificationLogRepository, VerificationLogRepository>();
 
 // -------------------------------------------------------
-// Infrastructure – Redis cache
+// Infrastructure â€“ Redis cache
 // -------------------------------------------------------
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
@@ -142,7 +141,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
 // -------------------------------------------------------
-// Infrastructure – Fabric lookup client (Go-service)
+// Infrastructure â€“ Fabric lookup client (Go-service)
 // -------------------------------------------------------
 builder.Services.AddHttpClient<IFabricLookupClient, FabricLookupClient>((serviceProvider, client) =>
 {
@@ -163,7 +162,7 @@ builder.Services.AddHttpClient<IFabricLookupClient, FabricLookupClient>((service
 builder.Services.AddSingleton<BuildingBlocks.Contracts.Messaging.IKafkaProducer, BuildingBlocks.Kafka.KafkaProducer>();
 
 // -------------------------------------------------------
-// Infrastructure – VC Validation
+// Infrastructure â€“ VC Validation
 // -------------------------------------------------------
 builder.Services.AddScoped<IDidKeyResolver, DidKeyResolver>();
 builder.Services.AddScoped<IDidKeyResolver, DidKeyResolver>();
@@ -175,7 +174,6 @@ builder.Services.AddScoped<IJwtValidator, VcJwtValidator>();
     builder.Services.AddScoped<IVerificationEngine, VerificationEngine>();
     
     // Register Plugins
-    builder.Services.AddScoped<IPresentationVerifier, LegacyAgeVerifier>();
     builder.Services.AddScoped<IPresentationVerifier, AgeZkpVerifier>();
     builder.Services.AddScoped<IPresentationVerifier, PolicyZkpVerifier>();
 

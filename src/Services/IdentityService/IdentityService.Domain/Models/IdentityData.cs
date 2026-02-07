@@ -1,68 +1,13 @@
 namespace IdentityService.Domain.Models;
 
 /// <summary>
-/// Identity data returned by an identity provider.
-/// Contains only the data that the provider can and did provide.
+/// Legacy identity data container to satisfy IIdentityProvider contract.
+/// Intentionally minimal/empty as new flow uses AgeVerificationDto.
 /// </summary>
-public class IdentityData
+public sealed class IdentityData
 {
-    /// <summary>
-    /// Provider that issued this identity data
-    /// </summary>
+    // Intentionally left minimal to satisfy compilation.
+    // Real data flow is handled via ISignicatAuthService -> AgeVerificationDto
     public string ProviderId { get; init; } = string.Empty;
-    
-    /// <summary>
-    /// Unique subject identifier from the provider
-    /// </summary>
     public string Subject { get; init; } = string.Empty;
-    
-    /// <summary>
-    /// Date of birth (if provider can provide it)
-    /// </summary>
-    public DateTime? DateOfBirth { get; init; }
-    
-    /// <summary>
-    /// Full name (if provider can provide it)
-    /// </summary>
-    public string? Name { get; init; }
-    
-    /// <summary>
-    /// National ID number (CPR, SSN, etc.) (if provider can provide it)
-    /// </summary>
-    public string? NationalId { get; init; }
-    
-    /// <summary>
-    /// Email address (if provider can provide it)
-    /// </summary>
-    public string? Email { get; init; }
-    
-    /// <summary>
-    /// Phone number (if provider can provide it)
-    /// </summary>
-    public string? Phone { get; init; }
-    
-    /// <summary>
-    /// Physical address (if provider can provide it)
-    /// </summary>
-    public string? Address { get; init; }
-    
-    /// <summary>
-    /// Additional custom claims from the provider
-    /// </summary>
-    public Dictionary<string, string> CustomClaims { get; init; } = new();
-    
-    /// <summary>
-    /// Identity provider used (e.g., "mitid", "bankid")
-    /// </summary>
-    public string? Provider { get; init; }
-    
-    /// <summary>
-    /// Level of Assurance achieved (e.g., "substantial", "high")
-    /// </summary>
-    public string? Loa { get; init; }
-    
-    /// <summary>
-    /// When the user was authenticated
-    /// </summary>
-    public DateTime? AuthenticatedAt { get; init; }
 }

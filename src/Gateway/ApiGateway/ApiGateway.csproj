@@ -16,7 +16,7 @@
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.15.0" />
 
     <!-- Options + config binding -->
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.1" />
+
   </ItemGroup>
 
 </Project>

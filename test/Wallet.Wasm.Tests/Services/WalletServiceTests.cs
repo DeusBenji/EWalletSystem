@@ -1,5 +1,6 @@
 // using Blazored.LocalStorage;
 using Moq;
+using Microsoft.JSInterop;
 using Wallet.Wasm.Models;
 using Wallet.Wasm.Services;
 using Xunit;
@@ -19,7 +20,9 @@ public class WalletServiceTests
         _mockHttp = new Mock<HttpClient>();
         
         // Use real (mock) ZKP service for tests
-        var zkpService = new ZkpProverService();
+        var jsMock = new Mock<IJSRuntime>();
+        var secretManager = new SecretManager(jsMock.Object);
+        var zkpService = new ZkpProverService(jsMock.Object, secretManager);
         
         _service = new WalletService(storage, _mockHttp.Object, zkpService);
     }

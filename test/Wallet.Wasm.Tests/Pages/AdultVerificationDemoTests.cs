@@ -24,7 +24,21 @@ public class AdultVerificationDemoTests : IDisposable
 
         ctx.Services.AddSingleton<WalletStorage>();
         ctx.Services.AddScoped<WalletService>();
-        ctx.Services.AddScoped<ZkpProverService>();
+
+        // Mock JSRuntime (needed for SecretManager)
+        ctx.Services.AddSingleton(new Mock<Microsoft.JSInterop.IJSRuntime>().Object);
+        
+        // Add SecretManager (needed for ZkpProverService)
+        ctx.Services.AddScoped<SecretManager>();
+
+        // Use Mock for ZkpProverService to avoid complex JS interop
+        var mockZkp = new Mock<IZkpProverService>();
+        mockZkp.Setup(x => x.GeneratePolicyProofAsync(It.IsAny<string>(), It.IsAny<string>()))
+               .ReturnsAsync("{\"mock\":\"proof\"}");
+        mockZkp.Setup(x => x.GenerateAgeProofAsync(It.IsAny<LocalWalletToken>(), It.IsAny<string>()))
+               .ReturnsAsync("{\"mock\":\"proof\"}");
+
+        ctx.Services.AddScoped<IZkpProverService>(_ => mockZkp.Object);
         ctx.Services.AddScoped(sp => _httpClient);
     }
 

@@ -3,6 +3,7 @@ package age
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
+	// "github.com/consensys/gnark/std/math/cmp"
 )
 
 // AgeCircuitV1 defines the constraints for the "Over 18" proof.
@@ -44,23 +45,18 @@ func (circuit *AgeCircuitV1) Define(api frontend.API) error {
 	// ------------------------------------------------------------------
 	// 2. Age Logic: CurrentYear - BirthYear >= 18
 	// ------------------------------------------------------------------
-	// Ensure the user is essentially saying: 2024 - 2000 = 24 >= 18
-
 	// diff = CurrentYear - BirthYear
 	diff := api.Sub(circuit.CurrentYear, circuit.BirthYear)
 
-	// Assert diff >= 18
-	// In gnark, we can use AssertIsLessOrEqual.
-	// 18 <= diff  <==>  diff >= 18
+	// Safe >= 18 Check:
+	// We want diff >= 18.
+	// So (diff - 18) must be >= 0.
+	// We compute val = diff - 18.
+	// Then we constrain val to be small (e.g. 64 bits).
+	// If diff < 18, val will be negative (huge in field), and ToBinary(val, 64) will fail.
 
-	// Note: To be safe against underflows (e.g. if birthYear > currentYear),
-	// we should technically constrain bits or assume field size handles it safely for small numbers.
-	// For this V1, we simply assert the inequality.
-
-	// Check if (diff - 18) is non-negative?
-	// simpler: api.AssertIsLessOrEqual(18, diff)
-
-	api.AssertIsLessOrEqual(18, diff)
+	val := api.Sub(diff, 18)
+	api.ToBinary(val, 64)
 
 	// ------------------------------------------------------------------
 	// 3. Replay Protection: Hash(Challenge) == ChallengeHash

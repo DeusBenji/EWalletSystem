@@ -100,6 +100,7 @@ namespace ValidationenTest
             // Assert
             Assert.False(isValid);
             Assert.Null(validatedToken);
+            Assert.NotNull(error);
             Assert.Contains("signature", error.ToLower());
         }
     }

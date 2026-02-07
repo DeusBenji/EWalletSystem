@@ -1,122 +1,100 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using IdentityService.Application.BusinessLogicLayer.Interface;
-using BuildingBlocks.Contracts.Events;
-using BuildingBlocks.Contracts.Messaging;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
+using IdentityService.Application.Interfaces;
+using IdentityService.Application.DTOs;
+using IdentityService.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
-namespace IdentityService.Controllers
+namespace IdentityService.API.Controllers;
+
+[ApiController]
+[Route("api/auth")]
+public class AuthController : ControllerBase
 {
-    [ApiController]
-    [Route("auth")]
-    public class AuthController : ControllerBase
+    private readonly ISignicatAuthService _authService;
+    private readonly ILogger<AuthController> _logger;
+
+    public AuthController(ISignicatAuthService authService, ILogger<AuthController> logger)
     {
-        private readonly IMitIdAccountService _mitIdAccountService;
-        private readonly IKafkaProducer _kafkaProducer;
-        private readonly ILogger<AuthController> _logger;
-        private readonly IConfiguration _config;
+        _authService = authService;
+        _logger = logger;
+    }
 
-        public AuthController(
-            IMitIdAccountService mitIdAccountService,
-            IKafkaProducer kafkaProducer,
-            ILogger<AuthController> logger,
-            IConfiguration config)
+    /// <summary>
+    /// Starts an authentication session with the specified provider.
+    /// </summary>
+    /// <returns>Authentication URL and Session ID</returns>
+    [HttpPost("{providerId}/start")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> StartAuth(string providerId, [FromQuery] Guid? accountId)
+    {
+        try
         {
-            _mitIdAccountService = mitIdAccountService;
-            _kafkaProducer = kafkaProducer;
-            _logger = logger;
-            _config = config;
+            var (authUrl, sessionId) = await _authService.StartAuthenticationAsync(providerId, accountId);
+            return Ok(new { authUrl, sessionId });
+        }
+        catch (ArgumentException ex)
+        {
+             return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start authentication for provider {ProviderId}", providerId);
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Handles the callback from Signicat after user authentication.
+    /// </summary>
+    /// <returns>Age Verification Result (Sanitized - No PII)</returns>
+    /// <response code="200">Returns age verification result. No personal data (CPR/Name) included.</response>
+    /// <response code="400">Authentication failed (e.g. CSRF mismatch, missing attribute). See error message.</response>
+    [HttpGet("{providerId}/callback")]
+    [ProducesResponseType(typeof(AgeVerificationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> Callback(string providerId, [FromQuery] string sessionId)
+    {
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            return BadRequest(new { error = "SessionId is required" });
         }
 
-        // /auth/login?accountId=...&returnUrl=/wallet
-        [HttpGet("login")]
-        public IActionResult Login([FromQuery] Guid accountId, [FromQuery] string? returnUrl = "/wallet")
+        try
         {
-            if (accountId == Guid.Empty)
-                return BadRequest("Missing accountId");
-
-            // anti-open-redirect (kun interne paths)
-            if (string.IsNullOrWhiteSpace(returnUrl) || !returnUrl.StartsWith("/"))
-                returnUrl = "/wallet";
-
-            // ? vi bærer accountId + returnUrl videre til /auth/result
-            var redirectAfterLogin =
-                $"/auth/result?accountId={accountId}&returnUrl={Uri.EscapeDataString(returnUrl)}";
-
-            return Challenge(
-                new Microsoft.AspNetCore.Authentication.AuthenticationProperties
-                {
-                    RedirectUri = redirectAfterLogin
-                },
-                "oidc"
-            );
+            var result = await _authService.HandleCallbackAsync(providerId, sessionId);
+            return Ok(result);
         }
-
-        [Authorize]
-        [HttpGet("result")]
-        public async Task<IActionResult> Result([FromQuery] Guid accountId, [FromQuery] string? returnUrl = "/wallet", CancellationToken ct = default)
+        catch (InvalidOperationException ex)
         {
-            if (accountId == Guid.Empty)
-                return BadRequest("Missing accountId");
-
-            if (string.IsNullOrWhiteSpace(returnUrl) || !returnUrl.StartsWith("/"))
-                returnUrl = "/wallet";
-
-            // 1) Opret / hent MitID-account ud fra claims og gem i DB (linked til accountId)
-            var result = await _mitIdAccountService.CreateFromClaimsAsync(User, accountId);
-
-            if (result == null)
-                return BadRequest("Could not create MitID account from claims.");
-
-            var dto = result.Account;
-
-            // 2) Kun send 'created'-event hvis account rent faktisk er ny
-            if (result.IsNew)
-            {
-                try
-                {
-                    var @event = new MitIdVerified(
-                        AccountId: dto.AccountId,
-                        IsAdult: dto.IsAdult,
-                        VerifiedAt: DateTime.UtcNow
-                    );
-
-                    await _kafkaProducer.PublishAsync(
-                        topic: Topics.MitIdVerified,
-                        key: dto.AccountId.ToString(),
-                        message: @event,
-                        ct: ct
-                    );
-
-                    _logger.LogInformation("Published MitIdVerified for AccountId {AccountId}", dto.AccountId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to publish MitIdVerified. Continuing without event.");
-                }
-            }
-
-            // 3) Redirect tilbage til Wallet frontend med claims
-            var walletBase = (_config["Wallet:BaseUrl"] ?? "http://localhost:8081").TrimEnd('/');
-
-            var query = $"?action=issue_token&isAdult={dto.IsAdult.ToString().ToLower()}&subId={dto.SubId}";
-            return Redirect(walletBase + returnUrl + query);
+            _logger.LogWarning("Authentication failed: {Message}", ex.Message);
+            return BadRequest(new { error = ex.Message });
         }
-
-        [HttpGet("logout")]
-        public IActionResult Logout()
+        catch (Exception ex)
         {
-            return SignOut(
-                new Microsoft.AspNetCore.Authentication.AuthenticationProperties
-                {
-                    RedirectUri = "/"
-                },
-                new[] { "Cookies", "oidc" }
-            );
+            _logger.LogError(ex, "Refusing callback for provider {ProviderId}", providerId);
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Checks the status of an ongoing authentication session.
+    /// </summary>
+    [HttpGet("session/{sessionId}/status")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetSessionStatus(string sessionId)
+    {
+        try
+        {
+            var status = await _authService.GetSessionStatusAsync(sessionId);
+            return Ok(new { status });
+        }
+        catch (Exception ex)
+        {
+             return BadRequest(new { error = ex.Message });
         }
     }
 }

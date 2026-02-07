@@ -8,7 +8,7 @@ namespace Wallet.Wasm.Services;
 /// Service for generating zero-knowledge proofs using Circom circuits and SnarkJS.
 /// Supports both legacy age-specific proofs and universal policy-based proofs.
 /// </summary>
-public class ZkpProverService
+public class ZkpProverService : IZkpProverService
 {
     private readonly IJSRuntime _js;
     private readonly SecretManager _secretManager;
