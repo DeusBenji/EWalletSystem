@@ -78,7 +78,7 @@ public class AuthController : ControllerBase
             return StatusCode(500, new { error = "Internal server error" });
         }
     }
-
+      
     /// <summary>
     /// Checks the status of an ongoing authentication session.
     /// </summary>
