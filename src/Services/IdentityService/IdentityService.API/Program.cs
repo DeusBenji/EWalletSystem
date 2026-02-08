@@ -54,7 +54,7 @@ var clientId = authSection["ClientId"];
 var clientSecret = authSection["ClientSecret"];
 var callbackPath = authSection["CallbackPath"] ?? "/signin-oidc";
 
-// ? Public origin (til gateway prefix) � fx "http://localhost:7005/mitid"
+// ? Public origin (til gateway prefix) – fx "http://localhost:7005/mitid"
 var publicOrigin = builder.Configuration["PublicOrigin"];
 
 // ?? JWT settings til gateway-tokens
@@ -82,6 +82,9 @@ builder.Services.AddStackExchangeRedisCache(options =>
 
 // Identity Providers and Signicat Services are registered via extension
 builder.Services.AddSignicatServices(builder.Configuration);
+
+// ✅ DbInitializer REGISTRERES (ellers får du "No service for type ... DbInitializer has been registered")
+builder.Services.AddScoped<IdentityService.Infrastructure.Persistence.DbInitializer>();
 
 // Health Checks
 builder.Services.AddHealthChecks()
@@ -112,7 +115,7 @@ builder.Services
         {
             OnMessageReceived = context =>
             {
-                 // Optional debug logging
+                // Optional debug logging
                 return Task.CompletedTask;
             }
         };
@@ -122,7 +125,7 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Swagger middleware  typisk kun i Development
+// Swagger middleware – typisk kun i Development
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -138,22 +141,10 @@ app.UseAuthorization();
 app.MapPrometheusScrapingEndpoint();
 app.MapHealthChecks("/health");
 
-// Initialize DB (Development Only)
+// ✅ Initialize DB (kører kun én gang - og kun i Development)
 if (app.Environment.IsDevelopment())
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var initializer = scope.ServiceProvider.GetService<IdentityService.Infrastructure.Persistence.DbInitializer>();
-        if (initializer != null) 
-        {
-            await initializer.InitializeAsync();
-        }
-    }
-}
-
-// Initialize DB
-using (var scope = app.Services.CreateScope())
-{
+    using var scope = app.Services.CreateScope();
     var initializer = scope.ServiceProvider.GetRequiredService<IdentityService.Infrastructure.Persistence.DbInitializer>();
     await initializer.InitializeAsync();
 }
