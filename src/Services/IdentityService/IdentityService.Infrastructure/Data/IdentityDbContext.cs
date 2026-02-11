@@ -18,6 +18,8 @@ public class IdentityDbContext : DbContext
     public DbSet<PolicyDefinition> PolicyDefinitions => Set<PolicyDefinition>();
     public DbSet<PolicyAttestation> PolicyAttestations => Set<PolicyAttestation>();
     public DbSet<PolicyAuditLog> PolicyAuditLogs => Set<PolicyAuditLog>();
+    public DbSet<IssuerSigningKey> IssuerSigningKeys => Set<IssuerSigningKey>();
+    public DbSet<KeyRetirementAudit> KeyRetirementAudits => Set<KeyRetirementAudit>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -135,6 +137,56 @@ public class IdentityDbContext : DbContext
             // Audit logs are append-only, indexed by timestamp
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => new { e.PolicyId, e.Version });
+        });
+
+        // IssuerSigningKey configuration
+        modelBuilder.Entity<IssuerSigningKey>(entity =>
+        {
+            entity.HasKey(e => e.KeyId);
+            
+            entity.Property(e => e.KeyId)
+                .HasMaxLength(100)
+                .IsRequired();
+            
+            entity.Property(e => e.Algorithm)
+                .HasMaxLength(20)
+                .IsRequired();
+            
+            entity.Property(e => e.PublicKeyJwk)
+                .HasColumnType("nvarchar(max)")
+                .IsRequired();
+            
+            entity.Property(e => e.EncryptedPrivateKey)
+                .HasColumnType("nvarchar(max)")
+                .IsRequired();
+            
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // KeyRetirementAudit configuration
+        modelBuilder.Entity<KeyRetirementAudit>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.KeyId)
+                .HasMaxLength(100)
+                .IsRequired();
+            
+            entity.Property(e => e.OldStatus)
+                .HasMaxLength(50)
+                .IsRequired();
+            
+            entity.Property(e => e.Reason)
+                .HasMaxLength(500)
+                .IsRequired();
+            
+            entity.Property(e => e.Actor)
+                .HasMaxLength(200)
+                .IsRequired();
+            
+            entity.HasIndex(e => e.RetiredAt);
+            entity.HasIndex(e => e.KeyId);
         });
     }
 }
