@@ -121,8 +121,11 @@ export class PanicButton {
 
         const tx = db.transaction(storeName, "readwrite");
         const store = tx.objectStore(storeName);
-        await store.clear();
-        await tx.done;
+        store.clear();
+        await new Promise<void>((resolve, reject) => {
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
     }
 
     private static async countItems(db: IDBDatabase, storeName: string): Promise<number> {
@@ -132,14 +135,19 @@ export class PanicButton {
 
         const tx = db.transaction(storeName, "readonly");
         const store = tx.objectStore(storeName);
-        const count = await store.count();
-        return count;
+        const request = store.count();
+
+        return new Promise<number>((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
     }
 
     private static async clearSessionStorage(): Promise<void> {
         // Clear chrome.storage.session (ephemeral keys)
-        if (typeof chrome !== "undefined" && chrome.storage?.session) {
-            await chrome.storage.session.clear();
+        const chromeGlobal = (globalThis as any).chrome;
+        if (typeof chromeGlobal !== "undefined" && chromeGlobal?.storage?.session) {
+            await chromeGlobal.storage.session.clear();
         }
 
         // Clear sessionStorage (web API)
@@ -162,19 +170,23 @@ export class PanicButton {
         const tx = db.transaction(this.AUDIT_LOG_STORE, "readwrite");
         const store = tx.objectStore(this.AUDIT_LOG_STORE);
 
-        await store.add({
+        store.add({
             id: crypto.randomUUID(),
             type: "PANIC_BUTTON_ACTIVATED",
             ...entry
         });
 
-        await tx.done;
+        await new Promise<void>((resolve, reject) => {
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
     }
 
     private static async showUserNotification(): Promise<void> {
         // Chrome extension notification
-        if (typeof chrome !== "undefined" && chrome.notifications) {
-            await chrome.notifications.create({
+        const chromeGlobal = (globalThis as any).chrome;
+        if (typeof chromeGlobal !== "undefined" && chromeGlobal?.notifications) {
+            await chromeGlobal.notifications.create({
                 type: "basic",
                 iconUrl: "icons/icon128.png",
                 title: "🔥 All Credentials Wiped",

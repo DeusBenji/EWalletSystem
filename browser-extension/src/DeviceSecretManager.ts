@@ -42,8 +42,11 @@ export class DeviceSecretManager {
         };
 
         const tx = db.transaction(this.KEY_STORE, "readwrite");
-        await tx.objectStore(this.KEY_STORE).put(metadata);
-        await tx.done;
+        tx.objectStore(this.KEY_STORE).put(metadata);
+        await new Promise<void>((resolve, reject) => {
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
 
         return newKey;
     }
@@ -139,8 +142,11 @@ export class DeviceSecretManager {
     static async wipeDeviceSecret(): Promise<void> {
         const db = await this.openDatabase();
         const tx = db.transaction(this.KEY_STORE, "readwrite");
-        await tx.objectStore(this.KEY_STORE).delete(this.DEVICE_SECRET_ID);
-        await tx.done;
+        tx.objectStore(this.KEY_STORE).delete(this.DEVICE_SECRET_ID);
+        await new Promise<void>((resolve, reject) => {
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
 
         console.warn("🔥 Device secret wiped - all credentials now unrecoverable");
     }
@@ -148,8 +154,12 @@ export class DeviceSecretManager {
     private static async getDeviceSecretMetadata(): Promise<DeviceSecretMetadata | null> {
         const db = await this.openDatabase();
         const tx = db.transaction(this.KEY_STORE, "readonly");
-        const metadata = await tx.objectStore(this.KEY_STORE).get(this.DEVICE_SECRET_ID);
-        return metadata || null;
+        const request = tx.objectStore(this.KEY_STORE).get(this.DEVICE_SECRET_ID);
+
+        return new Promise<DeviceSecretMetadata | null>((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => reject(request.error);
+        });
     }
 
     private static async loadDeviceSecret(db: IDBDatabase): Promise<CryptoKey | null> {
