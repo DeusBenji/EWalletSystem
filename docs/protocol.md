@@ -351,22 +351,168 @@ Validator checks:
 
 ---
 
-## 9. Security Considerations
+---
 
-### 9.1 Origin Binding
+## 9. Anti-Downgrade Enforcement
+
+### 9.1 Problem Statement
+
+**Attack Scenario:**
+1. Website operator discovers vulnerability in circuit v1.0.0
+2. Attacker serves malicious website requiring vulnerable v1.0.0
+3. User's extension has both v1.0.0 and v1.2.0 (patched) circuits
+4. Attacker forces extension to use v1.0.0 via version requirement
+5. Attacker exploits vulnerability
+
+**Defense:** Enforce minimum versions at both extension and validator levels.
+
+---
+
+### 9.2 Extension-Level Enforcement
+
+**Extension rejects requests for versions below minimum:**
+
+```typescript
+const MINIMUM_CIRCUIT_VERSIONS: Record<string, string> = {
+  "age_verification_v1": "1.2.0",  // v1.0.0-1.1.x known vulnerable
+  "drivers_license_v1": "1.0.0"
+};
+
+function validateVersionRequirement(policyId: string, requestedVersion: string): boolean {
+  const minimumVersion = MINIMUM_CIRCUIT_VERSIONS[policyId];
+  
+  if (!minimumVersion) {
+    throw new Error(`Unknown policy: ${policyId}`);
+  }
+  
+  // Check if requested version satisfies minimum
+  if (!semver.satisfies(requestedVersion, `>=${minimumVersion}`)) {
+    console.error(
+      `⛔ Downgrade attack blocked: ${policyId} v${requestedVersion} < minimum v${minimumVersion}`
+    );
+    return false;
+  }
+  
+  return true;
+}
+```
+
+**Result:**
+- Website requests `age_verification_v1@1.0.0` → **BLOCKED**
+- Website requests `age_verification_v1@^1.2.0` → **ALLOWED**
+
+---
+
+### 9.3 Validator-Level Enforcement
+
+**ValidationService MUST enforce minimum versions independently:**
+
+```csharp
+public static class MinimumPolicyVersions
+{
+    public static readonly Dictionary<string, string> Minimums = new()
+    {
+        { "age_over_18", "1.2.0" },
+        { "drivers_license", "1.0.0" }
+    };
+    
+    public static bool IsVersionAcceptable(string policyId, string version)
+    {
+        if (!Minimums.TryGetValue(policyId, out var minimum))
+        {
+            return false; // Unknown policy
+        }
+        
+        return CompareVersions(version, minimum) >= 0;
+    }
+}
+```
+
+**Why both layers?**
+- Extension layer: Prevents malicious websites from exploiting users
+- Validator layer: Defense-in-depth (protects against compromised extensions)
+
+---
+
+### 9.4 Version Pinning Attack
+
+**Attack:** Website pins to exact old version
+
+```javascript
+// Malicious website pins to vulnerable version
+EWallet.verifyPolicy("age_over_18", { version: "=1.0.0" });
+```
+
+**Defense:** Extension rejects exact pins below minimum
+
+```typescript
+if (versionSpec.startsWith("=")) {
+  const exactVersion = versionSpec.substring(1);
+  if (!semver.gte(exactVersion, minimumVersion)) {
+    return reject("DOWNGRADE_REJECTED");
+  }
+}
+```
+
+---
+
+### 9.5 Test Cases
+
+**Test Matrix:**
+
+| Website Requirement | Extension Minimum | User has v1.0.0 | User has v1.2.0 | Result |
+|---------------------|-------------------|------------------|------------------|--------|
+| `^1.0.0` | `1.2.0` | ❌ | ✅ | Use v1.2.0 |
+| `^1.2.0` | `1.2.0` | ❌ | ✅ | Use v1.2.0 |
+| `=1.0.0` | `1.2.0` | ✅ | ✅ | **BLOCKED** (downgrade) |
+| `1.x` | `1.2.0` | ❌ | ✅ | Use v1.2.0 |
+| `>=1.0.0` | `1.2.0` | ❌ | ✅ | Use v1.2.0 |
+
+---
+
+### 9.6 Upgrade Path
+
+**When vulnerability discovered:**
+
+1. **Patch circuit** (e.g. v1.0.0 → v1.2.0)
+2. **Update minimum version** in extension + validator
+3. **Deprecate old circuit** (mark v1.0.0 as blocked)
+4. **Users auto-upgrade** on next update check (background job)
+5. **Old proofs rejected** at validator (version too old)
+
+**Grace period:** None for vulnerabilities (immediate enforcement)
+
+---
+
+### 9.7 Monitoring & Alerts
+
+**Metrics to track:**
+- Downgrade attempt rate (by policyId)
+- Blocked version distribution
+- Extension version lag (users on old extensions)
+
+**Alerts:**
+- Spike in downgrade attempts → Possible attack campaign
+- User stuck on old version → May need manual intervention
+
+---
+
+## 10. Security Considerations
+
+### 10.1 Origin Binding
 
 **CRITICAL:** Origin MUST be verified at multiple layers:
 1. Extension: `origin === activeTab.url.origin`
 2. Proof: origin included in public inputs
 3. Validator: origin matches expected domain
 
-### 9.2 Nonce Requirements
+### 10.2 Nonce Requirements
 
 **Minimum entropy:** 256 bits (32 bytes hex)  
 **Uniqueness:** MUST be fresh per request  
 **Source:** Cryptographically secure random (e.g. `crypto.getRandomValues()`)
 
-### 9.3 Replay Prevention
+### 10.3 Replay Prevention
 
 **Mechanisms:**
 1. Nonce binding (single-use)
@@ -376,9 +522,9 @@ Validator checks:
 
 ---
 
-## 10. Error Handling
+## 11. Error Handling
 
-### 10.1 Fail Closed
+### 11.1 Fail Closed
 
 All verification errors MUST result in rejection.
 
@@ -390,7 +536,7 @@ All verification errors MUST result in rejection.
 
 **Default behavior:** DENY
 
-### 10.2 Reason Codes
+### 11.2 Reason Codes
 
 Validators MUST return specific reason codes:
 
@@ -404,14 +550,15 @@ Validators MUST return specific reason codes:
 | `RETIRED_KEY` | Credential signed with retired key |
 | `CLOCK_SKEW` | Timestamp outside tolerance |
 | `INCOMPATIBLE_VERSION` | Version not in accepted range |
+| `DOWNGRADE_REJECTED` | Version below minimum (security) |
 | `INVALID_PROOF` | zk-SNARK verification failed |
 | `MISSING_FIELD` | Required envelope field missing |
 
 ---
 
-## 11. Test Vectors
+## 12. Test Vectors
 
-### 11.1 Valid Proof Envelope
+### 12.1 Valid Proof Envelope
 
 ```json
 {
@@ -441,7 +588,7 @@ Validators MUST return specific reason codes:
 }
 ```
 
-### 11.2 Canonical Encoding Example
+### 12.2 Canonical Encoding Example
 
 **Input:**
 ```json
@@ -456,16 +603,16 @@ Validators MUST return specific reason codes:
 
 ---
 
-## 12. Backwards Compatibility
+## 13. Backwards Compatibility
 
-### 12.1 Deprecation Policy
+### 13.1 Deprecation Policy
 
 When protocol changes:
 1. New major version released (e.g. 2.0.0)
 2. Old version (1.x.x) enters deprecation (90 days minimum)
 3. After grace period, old version blocked
 
-### 12.2 Migration Path
+### 13.2 Migration Path
 
 Validators SHOULD support multiple protocol versions during transition:
 ```javascript
@@ -482,6 +629,8 @@ if (envelope.protocolVersion.startsWith("1.")) {
 
 **Changelog:**
 - **1.0.0** (2026-02-11): Initial specification
+- **1.1.0** (2026-02-11): Added anti-downgrade enforcement section
 
 **License:** MIT  
 **Maintainer:** ZKP Platform Security Team
+
