@@ -1,0 +1,152 @@
+name: Circuit Integrity Verification
+
+on:
+  pull_request:
+    paths:
+      - 'circuits/**'
+      - '.github/workflows/circuit-verification.yml'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'circuits/**'
+
+jobs:
+  verify-circuit-signature:
+    name: Verify Circuit Manifest Signature
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq openssl
+      
+      - name: Check manifest exists
+        run: |
+          if [ ! -f circuits/manifest.json ]; then
+            echo "❌ CRITICAL: Circuit manifest not found"
+            echo "All circuit artifacts must have a signed manifest"
+            exit 1
+          fi
+          echo "✅ Manifest found"
+      
+      - name: Verify manifest signature
+        run: |
+          # Extract signature from manifest
+          SIGNATURE=$(jq -r .signature circuits/manifest.json)
+          
+          if [ "$SIGNATURE" = "null" ] || [ -z "$SIGNATURE" ]; then
+            echo "❌ CRITICAL: Circuit manifest is not signed"
+            echo "Unsigned circuits are not allowed in production"
+            exit 1
+          fi
+          
+          # Decode signature
+          echo "$SIGNATURE" | base64 -d > /tmp/signature
+          
+          # Create canonical JSON (without signature field)
+          jq 'del(.signature)' circuits/manifest.json | jq -S -c . > /tmp/canonical.json
+          
+          # Verify signature with embedded public key
+          openssl dgst -sha256 -verify circuits/circuit_signing_public.pem \
+            -signature /tmp/signature /tmp/canonical.json
+          
+          if [ $? -ne 0 ]; then
+            echo "❌ CRITICAL: Circuit manifest signature verification FAILED"
+            echo "This indicates:"
+            echo "  1. Manifest was tampered with, OR"
+            echo "  2. Manifest was signed with wrong key, OR"
+            echo "  3. Signature is corrupted"
+            echo ""
+            echo "DO NOT MERGE THIS PR"
+            exit 1
+          fi
+          
+          echo "✅ Circuit manifest signature verified successfully"
+      
+      - name: Verify artifact hashes
+        run: |
+          # Check if artifacts exist
+          if [ ! -f circuits/prover.wasm ]; then
+            echo "❌ Prover WASM not found"
+            exit 1
+          fi
+          
+          if [ ! -f circuits/verification_key.json ]; then
+            echo "❌ Verification key not found"
+            exit 1
+          fi
+          
+          # Extract expected hashes from manifest
+          EXPECTED_PROVER_HASH=$(jq -r .artifacts.prover.sha256 circuits/manifest.json)
+          EXPECTED_VKEY_HASH=$(jq -r .artifacts.verificationKey.sha256 circuits/manifest.json)
+          
+          # Compute actual hashes
+          ACTUAL_PROVER_HASH=$(sha256sum circuits/prover.wasm | awk '{print $1}')
+          ACTUAL_VKEY_HASH=$(sha256sum circuits/verification_key.json | awk '{print $1}')
+          
+          # Compare prover hash
+          if [ "$EXPECTED_PROVER_HASH" != "$ACTUAL_PROVER_HASH" ]; then
+            echo "❌ HASH MISMATCH: Prover WASM"
+            echo "  Expected: $EXPECTED_PROVER_HASH"
+            echo "  Actual:   $ACTUAL_PROVER_HASH"
+            echo ""
+            echo "This indicates the prover.wasm file was modified after signing"
+            exit 1
+          fi
+          
+          # Compare verification key hash
+          if [ "$EXPECTED_VKEY_HASH" != "$ACTUAL_VKEY_HASH" ]; then
+            echo "❌ HASH MISMATCH: Verification key"
+            echo "  Expected: $EXPECTED_VKEY_HASH"
+            echo "  Actual:   $ACTUAL_VKEY_HASH"
+            echo ""
+            echo "This indicates the verification_key.json was modified after signing"
+            exit 1
+          fi
+          
+          echo "✅ All artifact hashes match manifest"
+          echo "  Prover:  ${ACTUAL_PROVER_HASH:0:16}..."
+          echo "  VKey:    ${ACTUAL_VKEY_HASH:0:16}..."
+      
+      - name: Verify circuit version
+        run: |
+          CIRCUIT_VERSION=$(jq -r .version circuits/manifest.json)
+          
+          # Semver validation
+          if ! echo "$CIRCUIT_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "❌ Invalid circuit version format: $CIRCUIT_VERSION"
+            echo "Must be semver: major.minor.patch"
+            exit 1
+          fi
+          
+          echo "✅ Circuit version valid: $CIRCUIT_VERSION"
+      
+      - name: Block PR on verification failure
+        if: failure()
+        run: |
+          echo "::error::Circuit integrity verification failed"
+          echo "::error::This PR is BLOCKED and cannot be merged"
+          echo ""
+          echo "Next steps:"
+          echo "  1. Review changes to circuit artifacts"
+          echo "  2. If legitimate, re-sign manifest on air-gapped machine"
+          echo "  3. Commit signed manifest and push again"
+          exit 1
+      
+      - name: Success summary
+        if: success()
+        run: |
+          echo "🎉 Circuit integrity verification PASSED"
+          echo ""
+          echo "Verified:"
+          echo "  ✅ Manifest signature (offline-signed)"
+          echo "  ✅ Artifact hashes (tamper detection)"
+          echo "  ✅ Circuit version (semver)"
+          echo ""
+          echo "This circuit is safe to deploy"
