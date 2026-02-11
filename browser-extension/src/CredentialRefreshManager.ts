@@ -131,14 +131,15 @@ export class CredentialRefreshManager {
             return;
         }
 
-        const daysText = this.EXPIRY_WARNING_DAYS === 1 ? 'day' : 'days';
+        const warningDays: number = this.EXPIRY_WARNING_DAYS;
+        const daysText = warningDays === 1 ? 'day' : 'days';
         const credentialsText = credentials.length === 1 ? 'credential' : 'credentials';
 
         await chromeGlobal.notifications.create({
             type: 'basic',
             iconUrl: 'icons/icon128.png',
             title: '⚠️ Credentials Expiring Soon',
-            message: `${credentials.length} ${credentialsText} will expire within ${this.EXPIRY_WARNING_DAYS} ${daysText}. Click to renew.`,
+            message: `${credentials.length} ${credentialsText} will expire within ${warningDays} ${daysText}. Click to renew.`,
             priority: 2,
             requireInteraction: true,
             buttons: [
