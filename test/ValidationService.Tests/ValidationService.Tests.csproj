@@ -34,6 +34,8 @@
     <ProjectReference Include="..\..\src\Services\Validation\ValidationService.Domain\ValidationService.Domain.csproj" />
     <ProjectReference Include="..\..\src\Services\Validation\ValidationService.Infrastructure\ValidationService.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Services\Validation\ValidationService.Api\ValidationService.Api.csproj" />
+    <ProjectReference Include="..\..\src\Services\ValidationService\ValidationService.Protocol\ValidationService.Protocol.csproj" />
+    <ProjectReference Include="..\..\src\Services\ValidationService\ValidationService.Security\ValidationService.Security.csproj" />
     <ProjectReference Include="..\..\src\BuildingBlocks\BuildingBlocks.csproj" />
   </ItemGroup>
 
@@ -41,5 +43,4 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-</Project>
 

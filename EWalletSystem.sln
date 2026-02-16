@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.3.11429.125 d18.3
+VisualStudioVersion = 18.3.11429.125
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
@@ -70,6 +70,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityService.Infrastructure", "src\Services\IdentityService\IdentityService.Infrastructure\IdentityService.Infrastructure.csproj", "{C5646CC0-105A-7381-7FA7-226FD9D6B1F6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityService.Tests", "test\IdentityService.Tests\IdentityService.Tests.csproj", "{BD57AC9A-DAC0-E9BF-5961-2319C8E498DC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ValidationService", "ValidationService", "{88E10F96-BCAA-8733-32C7-A57A8EE9ABB7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValidationService.Protocol", "src\Services\ValidationService\ValidationService.Protocol\ValidationService.Protocol.csproj", "{D5C3765C-E872-44D5-B2F2-F22FF202E3E7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValidationService.Security", "src\Services\ValidationService\ValidationService.Security\ValidationService.Security.csproj", "{0059781E-2EF6-4C31-9D95-A4232456BACB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -381,6 +387,30 @@ Global
 		{BD57AC9A-DAC0-E9BF-5961-2319C8E498DC}.Release|x64.Build.0 = Release|Any CPU
 		{BD57AC9A-DAC0-E9BF-5961-2319C8E498DC}.Release|x86.ActiveCfg = Release|Any CPU
 		{BD57AC9A-DAC0-E9BF-5961-2319C8E498DC}.Release|x86.Build.0 = Release|Any CPU
+		{D5C3765C-E872-44D5-B2F2-F22FF202E3E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D5C3765C-E872-44D5-B2F2-F22FF202E3E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D5C3765C-E872-44D5-B2F2-F22FF202E3E7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D5C3765C-E872-44D5-B2F2-F22FF202E3E7}.Debug|x64.Build.0 = Debug|Any CPU
+		{D5C3765C-E872-44D5-B2F2-F22FF202E3E7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D5C3765C-E872-44D5-B2F2-F22FF202E3E7}.Debug|x86.Build.0 = Debug|Any CPU
+		{D5C3765C-E872-44D5-B2F2-F22FF202E3E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D5C3765C-E872-44D5-B2F2-F22FF202E3E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D5C3765C-E872-44D5-B2F2-F22FF202E3E7}.Release|x64.ActiveCfg = Release|Any CPU
+		{D5C3765C-E872-44D5-B2F2-F22FF202E3E7}.Release|x64.Build.0 = Release|Any CPU
+		{D5C3765C-E872-44D5-B2F2-F22FF202E3E7}.Release|x86.ActiveCfg = Release|Any CPU
+		{D5C3765C-E872-44D5-B2F2-F22FF202E3E7}.Release|x86.Build.0 = Release|Any CPU
+		{0059781E-2EF6-4C31-9D95-A4232456BACB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0059781E-2EF6-4C31-9D95-A4232456BACB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0059781E-2EF6-4C31-9D95-A4232456BACB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0059781E-2EF6-4C31-9D95-A4232456BACB}.Debug|x64.Build.0 = Debug|Any CPU
+		{0059781E-2EF6-4C31-9D95-A4232456BACB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0059781E-2EF6-4C31-9D95-A4232456BACB}.Debug|x86.Build.0 = Debug|Any CPU
+		{0059781E-2EF6-4C31-9D95-A4232456BACB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0059781E-2EF6-4C31-9D95-A4232456BACB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0059781E-2EF6-4C31-9D95-A4232456BACB}.Release|x64.ActiveCfg = Release|Any CPU
+		{0059781E-2EF6-4C31-9D95-A4232456BACB}.Release|x64.Build.0 = Release|Any CPU
+		{0059781E-2EF6-4C31-9D95-A4232456BACB}.Release|x86.ActiveCfg = Release|Any CPU
+		{0059781E-2EF6-4C31-9D95-A4232456BACB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -418,5 +448,8 @@ Global
 		{C1A1F16E-5110-0ED2-1EA6-18A8574DC4A6} = {AD23A294-BEFB-4FE2-9334-DBC3F4A4A34A}
 		{C5646CC0-105A-7381-7FA7-226FD9D6B1F6} = {AD23A294-BEFB-4FE2-9334-DBC3F4A4A34A}
 		{BD57AC9A-DAC0-E9BF-5961-2319C8E498DC} = {0C88DD14-F956-CE84-757C-A364CCF449FC}
+		{88E10F96-BCAA-8733-32C7-A57A8EE9ABB7} = {984BB9B3-3FA3-BE33-9484-CAC21695A33C}
+		{D5C3765C-E872-44D5-B2F2-F22FF202E3E7} = {88E10F96-BCAA-8733-32C7-A57A8EE9ABB7}
+		{0059781E-2EF6-4C31-9D95-A4232456BACB} = {88E10F96-BCAA-8733-32C7-A57A8EE9ABB7}
 	EndGlobalSection
 EndGlobal

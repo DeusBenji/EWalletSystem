@@ -1,5 +1,6 @@
 using IdentityService.Application.Interfaces;
 using IdentityService.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 
 namespace IdentityService.Application.Handlers;
 
