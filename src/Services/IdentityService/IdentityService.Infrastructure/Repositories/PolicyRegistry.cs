@@ -1,6 +1,7 @@
 using IdentityService.Application.Interfaces;
 using IdentityService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace IdentityService.Infrastructure.Repositories;

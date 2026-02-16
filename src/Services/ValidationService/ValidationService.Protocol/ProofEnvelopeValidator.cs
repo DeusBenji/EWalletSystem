@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace ValidationService.Protocol;
 
 /// <summary>
