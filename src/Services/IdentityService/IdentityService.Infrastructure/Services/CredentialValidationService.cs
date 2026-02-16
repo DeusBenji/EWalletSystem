@@ -38,11 +38,14 @@ public class CredentialValidationService : ICredentialValidationService
         try
         {
             // 1. Parse JWT
-            var (header, payload) = ParseJwt(credentialJwt);
-            if (header == null || payload == null)
+            var (headerDoc, payloadElement) = ParseJwt(credentialJwt);
+            if (headerDoc == null || payloadElement == null)
             {
                 return Fail(ValidationReasonCode.MalformedJwt, "Invalid JWT format");
             }
+
+            var header = headerDoc.RootElement;
+            var payload = payloadElement.Value;
 
             // 2. Extract key ID
             if (!header.TryGetProperty("kid", out var kidElement))
