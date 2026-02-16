@@ -7,6 +7,7 @@ namespace ValidationService.Tests.SecurityTests;
 /// Tests for circuit manifest verification.
 /// Ensures only signed circuits are accepted.
 /// </summary>
+[Trait("Category", "SecurityInvariant")]
 public class CircuitManifestVerifierTests
 {
     private readonly CircuitManifestVerifier _verifier;

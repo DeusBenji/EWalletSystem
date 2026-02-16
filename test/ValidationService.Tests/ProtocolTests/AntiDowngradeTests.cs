@@ -7,6 +7,7 @@ namespace ValidationService.Tests.ProtocolTests;
 /// Tests for anti-downgrade enforcement.
 /// Ensures malicious websites cannot force users to use vulnerable circuit versions.
 /// </summary>
+[Trait("Category", "SecurityInvariant")]
 public class AntiDowngradeTests
 {
     [Fact]

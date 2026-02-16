@@ -6,6 +6,7 @@ namespace ValidationService.Tests.SecurityTests;
 /// Tests for circuit downgrade protection.
 /// Ensures clients cannot be forced to use older, vulnerable circuit versions.
 /// </summary>
+[Trait("Category", "SecurityInvariant")]
 public class CircuitDowngradeProtectionTests
 {
     [Theory]
