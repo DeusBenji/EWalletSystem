@@ -21,11 +21,11 @@ jobs:
           dotnet-version: '10.0.x'
       
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore EWalletSystem.sln
       
       - name: Run Security Invariant Tests
         run: |
-          dotnet test \
+          dotnet test EWalletSystem.sln \
             --filter "Category=SecurityInvariant" \
             --logger "trx;LogFileName=security-tests.trx" \
             --no-restore
